@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "twig"
+dynamic = ["version"]
+requires-python = ">= 3.8"
+dependencies = [
+    "toytree>=3.0.10",
+    "numpy",
+    "scipy",
+    "loguru",
+]
+authors = [
+  {name = "Deren Eaton", email = "de2356@columbia.edu"},
+]
+maintainers = [
+  {name = "Deren Eaton", email = "de2356@columbia.edu"},
+]
+description = "Evolutionary analysis of homologous sequences"
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE.txt", content-type = "text/markdown"}
+keywords = ["genes", "homologs", "orthologs", "phylogeny", "genomics"]
+classifiers = [
+  # How mature is this project? 3 - Alpha, 4 - Beta, 5 - Production/Stable
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Biofinformatics",
+  "Topic :: Genomics :: Analysis Tools",
+  "License :: OSI Approved :: BSD-3 License",
+  "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Homepage = "https://eaton-lab.org/twig"
+Documentation = "https://eaton-lab.org/twig"
+Repository = "https://github.com/eaton-lab/twig"
+Issues = "https://github.com/eaton-lab/twig/issues"
+# Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+
+# allows pip install twig[full]
+[project.optional-dependencies]
+full = [
+  "diamond",  # installs blast, entrez-direct, ncbi-vdb, ...
+  "mcl",
+  "raxml-ng",
+  # "mafft",
+  # "clipkit",  # installs biopython
+]
+
+[project.scripts]
+twig = "twig.cli.main:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "twig.__version__"}

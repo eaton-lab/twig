@@ -195,26 +195,30 @@ def exclude_long_tips(tree, ingroup_z, outgroup_z):
     return tree
 
 
-def collapse_and_require_outgroups(tree, require_outgroups, collapse_outgroups):
-    try:
-        outgs = tree.get_nodes("outgroup")
-    except ValueError:
-        outgs = []
+def collapse_and_require_outgroups(tree, imap, relabel, require_outgroups, collapse_outgroups):
+    if relabel:
+        outgroups = [i for (i, j) in imap.items() if j == "outgroup"]
+    else:
+        outgroups = ["outgroup"]
 
-    if not outgs:
+    try:
+        onodes = tree.get_nodes(*outgroups)
+    except ValueError:
+        onodes = []
+
+    if not onodes:
         if require_outgroups:
             return tree, True
         else:
             return tree, False
 
-    if (len(outgs) == 1) or (not collapse_outgroups):
+    if (len(onodes) == 1) or (not collapse_outgroups):
         return tree, False
 
     # outgroups present and in need of collapse
     tree.ladderize(inplace=True)
-    sorted(outgs, key=lambda x: x.idx)[0].name = "outgroup-keep"
-    tree.mod.drop_tips("outgroup", inplace=True)
-    tree.get_nodes("outgroup-keep")[0].name = "outgroup"
+    onodes = sorted(onodes, key=lambda x: x.idx)
+    tree.mod.drop_tips(*onodes[1:], inplace=True)
     return tree, False
 
 

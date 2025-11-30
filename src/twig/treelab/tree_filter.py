@@ -155,9 +155,14 @@ def relabel_and_subsample_by_imap(tree, imap, minmap, relabel):
             counts[pop] += 1
         else:
             counts[pop] = 1
-    for key in counts:
-        if counts[key] < minmap[key]:
-            return tree, True
+
+    try:
+        if minmap:
+            for key in counts:
+                if counts[key] < minmap[key]:
+                    return tree, True
+    except KeyError:
+        raise KeyError(f"key {key} in imap but not in minmap")
     return tree, False
 
 

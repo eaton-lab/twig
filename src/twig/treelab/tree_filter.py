@@ -115,14 +115,14 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     parser.add_argument("-ei", "--edge-outlier-ingroup", type=float, metavar="float", default=5, help="exclude non 'outgroup' population edges if >ei stdev from mean [5]")
 
     # actions
+    parser.add_argument("--subsample", action="store_true", help="subsample to include only tips in imap")
     parser.add_argument("--relabel", action="store_true", help="relabel tips to their imap population names")
     parser.add_argument("--exclude-outliers", action="store_true", help="exclude tips with outlier edge lengths (>ei or >eo)")
     parser.add_argument("--require-outgroups", action="store_true", help="require at least one 'outgroup' sample")
     parser.add_argument("--collapse-outgroups", action="store_true", help="keep only the most distant 'outgroup' (assumes rooted trees)")
-    # parser.add_argument("--require-outgroup", action="store_true", help="exclude tree if at least one outgroup is not present")
 
-    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
-    parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
+    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="CRITICAL", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
+    # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
     return parser
 
 
@@ -136,33 +136,36 @@ def relabel_tips_by_delim(tree, delim, idxs, join):
     return tree
 
 
-def relabel_and_subsample_by_imap(tree, imap, minmap, relabel):
-    keep = []
-    for node in tree[:tree.ntips]:
-        pop = imap.get(node.name)
-        if pop:
-            keep.append(node.name)
-        else:
-            continue
-    tree = tree.mod.prune(*keep)
+def relabel_and_subsample_by_imap(tree, imap, minmap, subsample, relabel):
 
-    counts = {}
-    for node in tree[:tree.ntips]:
-        pop = imap[node.name]
-        if relabel:
-            node.name = pop
-        if pop in counts:
-            counts[pop] += 1
-        else:
-            counts[pop] = 1
+    # subsample to keep only tips in imap
+    if subsample:
+        keep = []
+        for node in tree[:tree.ntips]:
+            if imap.get(node.name):
+                keep.append(node.name)
+        tree = tree.mod.prune(*keep)
 
-    try:
-        if minmap:
-            for key in counts:
-                if counts[key] < minmap[key]:
-                    return tree, True
-    except KeyError:
-        raise KeyError(f"key {key} in imap but not in minmap")
+    # subsample to keep only tips in imap
+    if relabel:
+        for node in tree[:tree.ntips]:
+            node.name = imap[node.name]
+
+    # filter by mincov
+    if minmap:
+        counts = {}
+        for node in tree[:tree.ntips]:
+            pop = imap[node.name]
+            if pop in counts:
+                counts[pop] += 1
+            else:
+                counts[pop] = 1
+        diff = set(counts) - set(minmap)
+        if diff:
+            raise KeyError(f"{diff} in imap but not in minmap")
+        for key in counts:
+            if counts[key] < minmap[key]:
+                return tree, True        
     return tree, False
 
 
@@ -263,7 +266,7 @@ def run_tree_filter(args):
 
     # [2] subsample and/or relabel by imap
     if imap:
-        results = [relabel_and_subsample_by_imap(i, imap, minmap, args.relabel) for i in trees]
+        results = [relabel_and_subsample_by_imap(i, imap, minmap, args.subsample, args.relabel) for i in trees]
         filters["minmap"] = sum(j for (i, j) in results)
         trees = [i for (i, j) in results if not j]
 

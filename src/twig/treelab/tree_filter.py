@@ -193,7 +193,11 @@ def exclude_long_tips(tree, ingroup_z, outgroup_z):
 
 
 def collapse_and_require_outgroups(tree, require_outgroups, collapse_outgroups):
-    outgs = tree.get_nodes("outgroup")
+    try:
+        outgs = tree.get_nodes("outgroup")
+    except ValueError:
+        outgs = []
+
     if not outgs:
         if require_outgroups:
             return tree, True

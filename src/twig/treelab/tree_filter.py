@@ -100,7 +100,7 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
 
     # parsing names
     parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip labels")
-    parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", help="index of delimited name items to keep")
+    parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
     parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")        
 
     # filter on names
@@ -128,6 +128,7 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
 
 def relabel_tips_by_delim(tree, delim, idxs, join):
     """Strip names to keep only accession IDs"""
+
     for node in tree[:tree.ntips]:
         items = node.name.split(delim)
         label = join.join([items[i] for i in idxs])
@@ -241,7 +242,7 @@ def run_tree_filter(args):
 
     # [1] relabel by split-select-rejoin
     if args.delim:
-        trees = [relabel_tips_by_delim(i, args.delim, args.idxs, args.join) for i in trees]
+        trees = [relabel_tips_by_delim(i, args.delim, args.delim_idxs, args.delim_join) for i in trees]
 
     # [2] subsample and/or relabel by imap
     if imap:

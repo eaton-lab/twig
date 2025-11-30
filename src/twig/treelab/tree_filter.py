@@ -226,6 +226,7 @@ def filter_by_max_copies(tree, max_copies):
 
 
 def run_tree_filter(args):
+    toytree.set_log_level(args.log_level)
 
     # parse the imap
     imap = {}

@@ -128,7 +128,6 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
 
 def relabel_tips_by_delim(tree, delim, idxs, join):
     """Strip names to keep only accession IDs"""
-
     for node in tree[:tree.ntips]:
         items = node.name.split(delim)
         label = join.join([items[i] for i in idxs])
@@ -196,22 +195,31 @@ def exclude_long_tips(tree, ingroup_z, outgroup_z):
 
 
 def collapse_and_require_outgroups(tree, imap, relabel, require_outgroups, collapse_outgroups):
+    
+    # get the node names to fetch
     if not relabel:
         outgroups = [i for (i, j) in imap.items() if j == "outgroup"]
     else:
         outgroups = ["outgroup"]
+    outgroups = [i for i in outgroups if i in tree.get_tip_labels()]
 
-    try:
-        onodes = tree.get_nodes(*outgroups)
-    except ValueError:
+    # fetch outgroup nodes
+    if outgroups:
+        try:        
+            onodes = tree.get_nodes(*outgroups)
+        except ValueError:
+            onodes = []
+    else:
         onodes = []
 
+    # return options for no outgroups present
     if not onodes:
         if require_outgroups:
             return tree, True
         else:
             return tree, False
 
+    # return option for >=1 outgroup present
     if (len(onodes) == 1) or (not collapse_outgroups):
         return tree, False
 

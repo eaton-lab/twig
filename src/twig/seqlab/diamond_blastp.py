@@ -31,7 +31,7 @@ KWARGS = dict(
     prog="diamond-blastp",
     usage="diamond-blastp query database [options]",
     help="search blastp hits of one protein fasta to another",
-    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),    
+    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
     description=textwrap.dedent("""
         -------------------------------------------------------------------
         | diamond-blastp: write .tsv of diamond blastp hits to stdout     |

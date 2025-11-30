@@ -20,7 +20,6 @@ from pathlib import Path
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from loguru import logger
 import pandas as pd
-from twig.utils.make_wide import make_wide
 from twig.utils.parallel import run_pipeline  # , run_with_pool
 from twig.utils.logger_setup import set_log_level
 
@@ -36,7 +35,7 @@ KWARGS = dict(
     prog="macse",
     usage="macse -i CDS -o OUTDIR [options]",
     help="filter, trim, and perform codon-aware alignment of CDS",
-    formatter_class=make_wide(RawDescriptionHelpFormatter, 120, 140),
+    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
     description=textwrap.dedent("""
         -------------------------------------------------------------------
         | macse: CDS/AA jointly and filter low homology seqs

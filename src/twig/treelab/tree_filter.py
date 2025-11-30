@@ -139,7 +139,7 @@ def relabel_tips_by_delim(tree, delim, idxs, join):
 def relabel_and_subsample_by_imap(tree, imap, minmap, relabel):
     counts = {}
     for node in tree[:tree.ntips]:
-        pop = imap[tip]
+        pop = imap[node]
         if relabel:        
             node.name = pop
         if pop in counts:

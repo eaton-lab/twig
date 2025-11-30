@@ -225,7 +225,7 @@ def run_tree_filter(args):
     # check required args
     if args.collapse_outgroups or args.require_outgroups:
         assert imap, "must provide an --imap when using --collapse-outgroups or --require-outgroups"
-        assert "outgroup" in imap, "imap must contain a population named 'outgroup' when using --collapse-outgroups or --require-outgroups"
+        assert "outgroup" in imap.values(), "imap must contain a population named 'outgroup' when using --collapse-outgroups or --require-outgroups"
 
     # load the trees [todo: support, etc. here?]
     trees = toytree.mtree(args.trees).treelist
@@ -255,7 +255,6 @@ def run_tree_filter(args):
 
     # [4] collapse outgroups (warn if no samples named outgroup?)
     if args.collapse_outgroups or args.require_outgroups:
-        assert "outgroup" in imap.values(), "imap must contain a population named 'outgroup' when using --collapse-outgroups or --require-outgroups"
         results = [collapse_and_require_outgroups(i) for i in trees]
         filters["require-outgroup"] = sum(j for (i, j) in results)
         trees = [i for (i, j) in results if not j]

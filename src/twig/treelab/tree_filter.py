@@ -5,9 +5,9 @@
 This is useful to filter tree sets for species tree and network analysis,
 among others.
 
->>> tree-filter -t TREES -o OUT -c 1 
->>> tree-filter -t TREES -o OUT -I IMAP -M MINMAP 
->>> tree-filter -t TREES -o OUT -m 20 
+>>> tree-filter -t TREES -o OUT -c 1
+>>> tree-filter -t TREES -o OUT -I IMAP -M MINMAP
+>>> tree-filter -t TREES -o OUT -m 20
 """
 
 from typing import List
@@ -30,11 +30,11 @@ KWARGS = dict(
         | tree-filter: Filter a set of trees for downstream analyses
         -------------------------------------------------------------------
         | ...
-        | The order of [optional] operations is (1) relabel by delim; (2) 
+        | The order of [optional] operations is (1) relabel by delim; (2)
         | subsample and/or relabel by imap; (3) exclude outlier; (4) collapse
-        | outgroups; (5) exclude trees w/ < min-tips; (6) exclude trees w/ 
-        | > min-copies in any name. Note that if names are relabed by delim, 
-        | then the imap should contain the relabeled names to subsample or 
+        | outgroups; (5) exclude trees w/ < min-tips; (6) exclude trees w/
+        | > min-copies in any name. Note that if names are relabed by delim,
+        | then the imap should contain the relabeled names to subsample or
         | relabel further. Filtering stats are written to stderr, which can
         | be piped to a log file with `2> log.txt`.
         -------------------------------------------------------------------
@@ -101,7 +101,7 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     # parsing names
     parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip labels")
     parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
-    parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")        
+    parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
 
     # filter on names
     # parser.add_argument("-i", "--include", type=str, metavar="str", nargs="+", help="subset of names to keep")
@@ -109,7 +109,7 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     parser.add_argument("-m", "--minmap", type=Path, metavar="path", help=r"filepath listing (population mincov) for filters")
 
     # filter on tree data
-    parser.add_argument("-s", "--min-tips", type=int, metavar="int", default=4, help="min tips after pruning [4]")    
+    parser.add_argument("-s", "--min-tips", type=int, metavar="int", default=4, help="min tips after pruning [4]")
     parser.add_argument("-c", "--max-copies", type=int, metavar="int", help="filter trees with >c gene copies from a taxon [None]")
     parser.add_argument("-eo", "--edge-outlier-outgroup", type=float, metavar="float", default=10, help="exclude 'outgroup' population edges if >eo stdev from mean [10]")
     parser.add_argument("-ei", "--edge-outlier-ingroup", type=float, metavar="float", default=5, help="exclude non 'outgroup' population edges if >ei stdev from mean [5]")
@@ -122,7 +122,7 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     # parser.add_argument("--require-outgroup", action="store_true", help="exclude tree if at least one outgroup is not present")
 
     parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
-    parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")    
+    parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
     return parser
 
 
@@ -137,20 +137,28 @@ def relabel_tips_by_delim(tree, delim, idxs, join):
 
 
 def relabel_and_subsample_by_imap(tree, imap, minmap, relabel):
+    keep = []
+    for node in tree[:tree.ntips]:
+        pop = imap.get(node.name)
+        if pop:
+            keep.append(node.name)
+        else:
+            continue
+    tree = tree.mod.prune(*keep)
+
     counts = {}
     for node in tree[:tree.ntips]:
         pop = imap[node.name]
-        if relabel:        
+        if relabel:
             node.name = pop
         if pop in counts:
             counts[pop] += 1
         else:
-            counts[pop] = 0
-    filtered = False
+            counts[pop] = 1
     for key in counts:
         if counts[key] < minmap[key]:
-            filtered = True
-    return tree, filtered
+            return tree, True
+    return tree, False
 
 
 def exclude_long_tips(tree, ingroup_z, outgroup_z):
@@ -276,7 +284,7 @@ def run_tree_filter(args):
     print(f"ntrees start = {ntrees}", file=sys.stderr)
     for key in filters:
         print(f"trees filtered by {key} = {filters[key]}", file=sys.stderr)
-    print(f"ntrees end = {len(trees)}", file=sys.stderr)        
+    print(f"ntrees end = {len(trees)}", file=sys.stderr)
 
     # print to stdout or write to file
     if not trees:
@@ -296,7 +304,7 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()        
+        main()
     except KeyboardInterrupt:
         logger.warning("interrupted by user")
     # except TwigError as exc:

@@ -306,6 +306,7 @@ def run_tree_filter(args):
         trees = [i for (i, j) in results if not j]
 
     # print stats to stderr
+    print(f"CMD: {' '.join(sys.argv[:])}")
     print(f"ntrees start = {ntrees}", file=sys.stderr)
     for key in filters:
         print(f"trees filtered by {key} = {filters[key]}", file=sys.stderr)

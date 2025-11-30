@@ -196,7 +196,7 @@ def exclude_long_tips(tree, ingroup_z, outgroup_z):
 
 
 def collapse_and_require_outgroups(tree, imap, relabel, require_outgroups, collapse_outgroups):
-    if relabel:
+    if not relabel:
         outgroups = [i for (i, j) in imap.items() if j == "outgroup"]
     else:
         outgroups = ["outgroup"]

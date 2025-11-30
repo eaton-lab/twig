@@ -21,8 +21,6 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
 from tempfile import gettempdir
 from loguru import logger
-from twig.utils.make_wide import make_wide
-
 
 logger = logger.bind(name="twig")
 DIAMOND_BIN = Path(sys.prefix) / "bin" / "diamond"
@@ -33,7 +31,7 @@ KWARGS = dict(
     prog="diamond-blastp",
     usage="diamond-blastp query database [options]",
     help="search blastp hits of one protein fasta to another",
-    formatter_class=make_wide(RawDescriptionHelpFormatter),
+    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),    
     description=textwrap.dedent("""
         -------------------------------------------------------------------
         | diamond-blastp: write .tsv of diamond blastp hits to stdout     |

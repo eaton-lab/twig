@@ -72,7 +72,6 @@ import pandas as pd
 import numpy as np
 from pandas.api.types import CategoricalDtype
 from loguru import logger
-from twig.utils.make_wide import make_wide
 
 
 KWARGS = dict(
@@ -80,7 +79,7 @@ KWARGS = dict(
     # usage="%(prog)s fasta [options]",
     usage="twig format-gff GFF [options]",
     help="format gff to filter and relabel genes and scaffolds",
-    formatter_class=make_wide(RawDescriptionHelpFormatter),
+    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),    
     description=textwrap.dedent("""
         -------------------------------------------------------------------
         | format-gff: filter/relabel genome annotation table              |

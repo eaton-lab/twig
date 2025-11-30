@@ -21,7 +21,6 @@ import textwrap
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
 from loguru import logger
-#from twig.utils.make_wide import make_wide
 
 
 def get_parser_format_genome(parser: ArgumentParser | None = None) -> ArgumentParser:
@@ -31,7 +30,7 @@ def get_parser_format_genome(parser: ArgumentParser | None = None) -> ArgumentPa
         prog="format-genome",
         usage="%(prog)s fasta [options]",
         help="format a genome fasta to sort, subselect, or relabel headers",
-        formatter_class=make_wide(RawDescriptionHelpFormatter),
+        formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
         description=textwrap.dedent("""
             -------------------------------------------------------------------
             | format-genome: sort/subselect/relabel headers & change masking  |

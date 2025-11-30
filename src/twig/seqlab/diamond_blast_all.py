@@ -28,10 +28,9 @@ from pathlib import Path
 from tempfile import gettempdir
 from loguru import logger
 import numpy as np
-from twig.utils.make_wide import make_wide
+# from twig.utils.make_wide import make_wide
 from twig.utils.path_utils import expand_multiple_paths
 from concurrent.futures import ProcessPoolExecutor, as_completed
-
 
 logger = logger.bind(name="twig")
 DIAMOND_BIN = Path(sys.prefix) / "bin" / "diamond"
@@ -45,7 +44,7 @@ def get_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
         prog="diamond-blast-all",
         usage="%(prog)s paths [args]",
         help="write .tsv blast hits for all pairs of fasta sequence files",
-        formatter_class=make_wide(RawDescriptionHelpFormatter),
+        formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
         description=textwrap.dedent("""
             -------------------------------------------------------------------
             | diamond-blast-all: write .tsv's of all-by-all diamond blast hits |

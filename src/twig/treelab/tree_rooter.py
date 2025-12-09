@@ -5,7 +5,6 @@
 ...
 """
 
-
 from typing import List
 import sys
 import textwrap
@@ -112,7 +111,7 @@ def run_tree_rooter(args):
 
     if args.sptree:
         sptree = toytree.tree(args.sptree)
-        root_clades = get_rooting_clades(args.sptree, args.outgroups)
+        root_clades = get_rooting_clades(sptree, args.outgroups)
     else:
         root_clades = [i.split(",") for i in outgroups] if outgroups else []
 
@@ -188,8 +187,6 @@ if __name__ == "__main__":
         main()        
     except KeyboardInterrupt:
         logger.warning("interrupted by user")
-    # except TwigError as exc:
-    #     logger.error(exc)
     except Exception as exc:
         logger.error(exc)
         raise

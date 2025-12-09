@@ -9,6 +9,8 @@
 5. align.
 6. trim.
 7. export.
+
+TODO: detect and raise error in input is AA instead of NT.
 """
 
 from typing import List
@@ -25,10 +27,13 @@ from twig.utils.logger_setup import set_log_level
 
 BIN = Path(sys.prefix) / "bin"
 BIN_MACSE = str(BIN / "macse")
-ISOFORM_REGEX_DEFAULT = r'^(.+_i)(\d+)(\..*)?$'
+# ISOFORM_REGEX_DEFAULT = r'^(.+_i)(\d+)(\..*)?$'
 # group 1 (shared part up until _i)
 # group 2 (isoform index)
 # group 3 (optional suffix)
+ISOFORM_REGEX_DEFAULT = r"^([^|]+)\|.*?__(.+?)_i\d+"
+# group 1 (shared part up until |)
+# group 2 (after __ and up until first _i)
 
 
 KWARGS = dict(
@@ -55,8 +60,10 @@ KWARGS = dict(
         $ twig macse -i CDS -o OUT -p TEST
         $ twig macse -i CDS -o OUT -mh 0.1 -mi 0.5 -ti 50 -te 50 -mc 15 -c 20
         $ twig macse -i CDS -o OUT -mh 0.3 -mi 0.8 -ti 25 -te 25 -mc 15 -c 20
-        $ twig macse -i CDS -o OUT -mh 0.5 -mc 10 -xa -ml 200 -e '^sppA.*'
+        $ twig macse -i CDS -o OUT -mh 0.5 -mc 10 -k -xa -ml 200 -e '^sppA.*'
         $ twig macse -i CDS -o OUT -s '^sppA.*'        
+
+        # run parallel jobs on many cds files
         $ parallel -j 10 'twig macse -i {} -o OUT -p {/.}' ::: CDS/*.fa
     """)
 )
@@ -89,7 +96,7 @@ def get_parser_macse(parser: ArgumentParser | None = None) -> ArgumentParser:
     parser.add_argument("-mm", "--min-mem-length", type=int, metavar="int", default=6, help="homology is the prop of aa Maximum Exact Matches of this length [%(default)s]")
     parser.add_argument("-ac", "--aln-trim-ends-min-coverage", type=float, metavar="float", default=0.4, help="trim alignment edges to where a min percent of samples have data [%(default)s]")
     parser.add_argument("-as", "--aln-trim-window-size", type=int, metavar="int", default=5, help="trim alignment using a sliding 'half_window_size' defined as ... [%(default)s]")
-    parser.add_argument("-is", "--isoform-regex", type=str, metavar="str", default=ISOFORM_REGEX_DEFAULT, help="regex used to group isoform sequences ['%(default)s']")
+    parser.add_argument("-is", "--isoform-regex", type=re.compile, metavar="str", default=ISOFORM_REGEX_DEFAULT, help="regex used to group isoform sequences ['%(default)s']")
 
     # choose one or more
     # parser.add_argument("-xt", "--skip-trim-and-filter", action="store_true", help="skip trim and filter step")
@@ -97,6 +104,7 @@ def get_parser_macse(parser: ArgumentParser | None = None) -> ArgumentParser:
     parser.add_argument("-xa", "--skip-alignment", action="store_true", help="skip alignment step and only trim/filter sequences")
 
     # others
+    # parser.add_argument("-B", "--binary", type=Path, metavar="path", help="path to macse binary if not in $PATH")
     parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")    
     parser.add_argument("-k", "--keep", action="store_true", help="keep tmp files (for debugging)")
     parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
@@ -128,7 +136,7 @@ def call_macse_trim_non_homologous_fragments(
     """
     out = outdir / f"{prefix}.trim"
     if out.exists() and not force:
-        logger.debug(f"[{prefix}] [skipping] {out} already exists")
+        logger.warning(f"[{prefix}] [skipping] {out} already exists")
         return 0
     cmd = [
         BIN_MACSE, "-prog", "trimNonHomologousFragments",
@@ -152,7 +160,7 @@ def call_macse_trim_non_homologous_fragments(
 def filter_sequences(
     outdir: Path,
     prefix: str,
-    isoform_regex: str,
+    isoform_regex: re.compile,
     exclude: List[str],
     subsample: List[str],
     min_length: int,
@@ -222,7 +230,7 @@ def filter_sequences(
         matched = list(set(names) - set(matched))
 
     # group sequences by isoform regex
-    pat = re.compile(isoform_regex)
+    pat = isoform_regex
     groups = defaultdict(list)
     for name, seq in seqs.items():
 
@@ -279,7 +287,7 @@ def filter_sequences(
     mean_length = data.loc[keys, "bp_kept"].mean()
     mean_trimmed = data.loc[keys, "bp_trim"].mean()
     mean_homology = data.loc[keys, "homology_total"].mean()
-    logger.info(f"[{prefix}] filtered {len(info)} -> {len(collapsed)} seqs [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}, isoform={f['isoform']}])")
+    logger.info(f"[{prefix}] {len(info)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}, isoform={f['isoform']}])")
     logger.info(f"[{prefix}] stats of retained sequences: mean_nt_length={mean_length:.2f}; mean_nt_trimmed={mean_trimmed:.2f}; mean_homology={mean_homology:.2f}")
 
     
@@ -349,6 +357,10 @@ def run_macse(args):
     """..."""
     set_log_level(args.log_level, args.log_file)
 
+    # check that macse is in PATH
+    assert Path(BIN_MACSE).exists(), f"macse binary not found. Checked: {BIN_MACSE}"
+
+    # only one or the other allowed
     if args.exclude and args.subsample:
         raise ValueError("choose one of --exclude or --subample, but not both")
 
@@ -364,7 +376,7 @@ def run_macse(args):
 
     # if skip isoform collapse then set isoform grouper to arbitrary str
     if args.skip_isoform_collapse:
-        args.isoform_regex = "@@@@@"
+        args.isoform_regex = re.compile("@@@@@")
 
     # trim sequences
     call_macse_trim_non_homologous_fragments(
@@ -429,7 +441,5 @@ if __name__ == "__main__":
         main()        
     except KeyboardInterrupt:
         logger.warning("interrupted by user")
-    # except OTKError as exc:
-    #     logger.error(exc)
     except Exception as exc:
         logger.error(exc)

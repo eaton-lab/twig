@@ -102,6 +102,7 @@ def get_rooting_clades(sptree, outgroups):
 def run_tree_rooter(args):
     # require -s -r or -R
     # toytree.set_log_level(args.log_level)#, args.log_file)
+    assert args.trees.exists(), f"trees file {args.trees}..."
 
     # parse outfile args to list
     if args.outgroups_file:
@@ -110,6 +111,7 @@ def run_tree_rooter(args):
         outgroups = args.outgroups
 
     if args.sptree:
+        assert args.sptree.exists(), '...'
         sptree = toytree.tree(args.sptree)
         root_clades = get_rooting_clades(sptree, args.outgroups)
     else:

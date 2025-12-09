@@ -113,10 +113,18 @@ def main(cmd: Optional[str] = None) -> int:
         "tree-filter": run_tree_filter,
         "tree-rooter": run_tree_rooter,
     }
+
+    # run function and handle errors
     if args.subcommand:
-        run_func = dispatch[args.subcommand]
-        run_func(args)
-        return 0
+        try:
+            run_func = dispatch[args.subcommand]
+            run_func(args)
+            return 0
+        except KeyboardInterrupt:
+            logger.warning("interrupted by user")
+        except Exception as exc:
+            logger.error(exc)
+        return 1
 
     # unreachable
     parser.print_help()
@@ -129,5 +137,7 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         logger.warning("interrupted by user")
+    except RuntimeError as exc:
+        logger.error(exc)
     except Exception as exc:
         logger.error(exc)

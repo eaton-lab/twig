@@ -271,6 +271,7 @@ def run_tree_filter(args):
         "require-outgroup": 0,
         "min-tips": 0,
         "max-copies": 0,
+        "outliers-tips-removed": 0,
     }
 
     # [1] relabel by split-select-rejoin
@@ -285,7 +286,10 @@ def run_tree_filter(args):
 
     # [3] exclude outlier edges
     if args.exclude_outliers:
+        pre_tips = sum(i.ntips for i in trees)
         trees = [exclude_long_tips(i, args.edge_outlier_ingroup, args.edge_outlier_outgroup) for i in trees]
+        post_tips = sum(i.ntips for i in trees)        
+        filters["outliers-tips-removed"] = pre_tips - post_tips
 
     # [4] collapse outgroups (warn if no samples named outgroup?)
     if args.collapse_outgroups or args.require_outgroups:

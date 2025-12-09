@@ -114,6 +114,7 @@ def run_tree_rooter(args):
         root_clades = get_rooting_clades(sptree, args.outgroups)
     else:
         root_clades = [i.split(",") for i in outgroups] if outgroups else []
+    logger.debug(f"ordered rooting clades: {root_clades}")
 
     # track success
     count = {"rerooted": 0, "not-rerooted": 0}
@@ -123,6 +124,7 @@ def run_tree_rooter(args):
     # iterate over newicks in treefile
     with args.trees.open() as datain:
         for tidx, nwk in enumerate(datain.readlines()):
+            logger.debug(f"{tidx}...")            
             tree = toytree.tree(nwk)
             tips = tree.get_tip_labels()
             rooted = False

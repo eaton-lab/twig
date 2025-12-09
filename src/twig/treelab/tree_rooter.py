@@ -103,8 +103,9 @@ def get_rooting_clades(sptree, outgroups):
 def run_tree_rooter(args):
     # require -s -r or -R
     set_log_level(args.log_level)
+    logger.warning(args.trees)
     assert args.trees.exists(), f"trees file {args.trees}..."
-
+    
     # parse outfile args to list
     if args.outgroups_file:
         outgroups = [i.strip() for i in args.outgroups.open().readlines()]

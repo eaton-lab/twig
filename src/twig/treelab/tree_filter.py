@@ -266,12 +266,12 @@ def run_tree_filter(args):
 
     # store filtering stats
     ntrees = len(trees)
+    outlier_tips_removed = 0
     filters = {
         "minmap": 0,
         "require-outgroup": 0,
         "min-tips": 0,
         "max-copies": 0,
-        "outliers-tips-removed": 0,
     }
 
     # [1] relabel by split-select-rejoin
@@ -289,7 +289,7 @@ def run_tree_filter(args):
         pre_tips = sum(i.ntips for i in trees)
         trees = [exclude_long_tips(i, args.edge_outlier_ingroup, args.edge_outlier_outgroup) for i in trees]
         post_tips = sum(i.ntips for i in trees)        
-        filters["outliers-tips-removed"] = pre_tips - post_tips
+        outlier_tips_removed = pre_tips - post_tips
 
     # [4] collapse outgroups (warn if no samples named outgroup?)
     if args.collapse_outgroups or args.require_outgroups:
@@ -310,11 +310,12 @@ def run_tree_filter(args):
         trees = [i for (i, j) in results if not j]
 
     # print stats to stderr
-    print(f"CMD: {' '.join(sys.argv[:])}")
+    print(f"CMD: {' '.join(sys.argv[:])}", file=sys.stderr)
     print(f"ntrees start = {ntrees}", file=sys.stderr)
     for key in filters:
         print(f"trees filtered by {key} = {filters[key]}", file=sys.stderr)
     print(f"ntrees end = {len(trees)}", file=sys.stderr)
+    print(f"outlier tips removed = {outlier_tips_removed}", file=sys.stderr)    
 
     # print to stdout or write to file
     if not trees:

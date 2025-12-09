@@ -12,6 +12,7 @@ from pathlib import Path
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from loguru import logger
 import toytree
+from twig.utils.logger_setup import set_log_level
 
 
 KWARGS = dict(
@@ -101,7 +102,7 @@ def get_rooting_clades(sptree, outgroups):
 
 def run_tree_rooter(args):
     # require -s -r or -R
-    toytree.set_log_level(args.log_level)
+    set_log_level(args.log_level)
     assert args.trees.exists(), f"trees file {args.trees}..."
 
     # parse outfile args to list

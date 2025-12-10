@@ -234,10 +234,12 @@ def run_tree_filter(args):
     if args.imap:
         with args.imap.open() as hin:
             for line in hin.readlines():
-                label, *other = line.strip().split()
-                pop = label
-                if other:
-                    pop = other[0]
+                data = line.strip().split()
+                if len(data) == 1:
+                    label = pop = data
+                else:
+                    label = data[0]
+                    pop = data[1]
                 imap[label] = pop
 
     # parse the minmap

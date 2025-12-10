@@ -32,23 +32,25 @@ KWARGS = dict(
     formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=140, max_help_position=140),
     description=textwrap.dedent("""
         -------------------------------------------------------------------
-        | tree-filter: Filter a set of trees for downstream analyses
+        | tree-filter: Filter/Relabel a set of trees for downstream analyses
         -------------------------------------------------------------------
-        | ...
-        | The order of [optional] operations is (1) relabel by delim; (2)
-        | subsample and/or relabel by imap; (3) exclude outlier; (4) collapse
-        | outgroups; (5) exclude trees w/ < min-tips; (6) exclude trees w/
-        | > min-copies in any name. Note that if names are relabed by delim,
-        | then the imap should contain the relabeled names to subsample or
-        | relabel further. Filtering stats are written to stderr, which can
-        | be piped to a log file with `2> log.txt`.
+        | The order of [optional] operations is (1) parse names from delim
+        | split tip labels; (2) subsample and/or relabel names by imap;
+        | (3) exclude outlier edges; (4) collapse outgroups; (5) exclude
+        | trees w/ < min-tips; (6) exclude trees w/ > min-copies in any name.
+        | Note that if names are parsed by delim, then the imap should contain
+        | the parsed names. The labels on output trees will be the same as in
+        | the inputs unless --relabel-delim or --relabel-imap is used. But
+        | parsing shorter names can be useful to match names to imap even
+        | if keeping full names. Filtering stats are written to stderr, which
+        | can be redirected to a log file with `2> log.txt`.
         -------------------------------------------------------------------
     """),
     epilog=textwrap.dedent("""
         Examples
         --------
         # relabel by split-select-join on tip names
-        $ twig tree-filter -i NWK -d '-' -di 0 2 -dj '-' > relabeled-trees.nwk
+        $ twig tree-filter -i NWK -d '-' -di 0 2 -dj '-rd' > relabeled-trees.nwk
 
         # get only single-copy gene trees
         $ twig tree-filter -i NWK -c 1 > single-copy-trees.nwk
@@ -80,10 +82,10 @@ KWARGS = dict(
         $ twig tree-filter -i NWK -I IMAP > subsample-trees.nwk
 
         # subsample and relabel to pop names in imap
-        $ twig tree-filter -i NWK -I IMAP --relabel > relabeled-trees.nwk
+        $ twig tree-filter -i NWK -I IMAP -ri > relabeled-trees.nwk
 
         # subsample, relabel, and keep only one outgroup (best to root before)
-        $ twig tree-filter -i NWK -I IMAP --relabel --collapse > final-trees.nwk
+        $ twig tree-filter -i NWK -I IMAP -ri --collapse > final-trees.nwk
     """)
 )
 
@@ -114,14 +116,15 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     parser.add_argument("-M", "--minmap", type=Path, metavar="path", help=r"filepath listing (population mincov) for filters")
 
     # filter on tree data
-    parser.add_argument("-s", "--min-tips", type=int, metavar="int", default=4, help="min tips after pruning [4]")
+    parser.add_argument("-m", "--min-tips", type=int, metavar="int", default=4, help="min tips after pruning [4]")
     parser.add_argument("-c", "--max-copies", type=int, metavar="int", help="filter trees with >c gene copies from a taxon [None]")
     parser.add_argument("-eo", "--edge-outlier-outgroup", type=float, metavar="float", default=10, help="exclude 'outgroup' population edges if >eo stdev from mean [10]")
     parser.add_argument("-ei", "--edge-outlier-ingroup", type=float, metavar="float", default=5, help="exclude non 'outgroup' population edges if >ei stdev from mean [5]")
 
     # actions
+    parser.add_argument("-rd", "--relabel-delim", action="store_true", help="relabel tips by their delim parsed names")
+    parser.add_argument("-ri", "--relabel-imap", action="store_true", help="relabel tips to their imap mapped names")
     parser.add_argument("--subsample", action="store_true", help="subsample to include only tips in imap")
-    parser.add_argument("--relabel", action="store_true", help="relabel tips to their imap population names")
     parser.add_argument("--exclude-outliers", action="store_true", help="exclude tips with outlier edge lengths (>ei or >eo)")
     parser.add_argument("--require-outgroups", action="store_true", help="require at least one 'outgroup' sample")
     parser.add_argument("--collapse-outgroups", action="store_true", help="keep only the most distant 'outgroup' (assumes rooted trees)")
@@ -131,34 +134,30 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     return parser
 
 
-def relabel_tips_by_delim(tree, delim, idxs, join):
+def set_delim_and_imap_labels(tree, delim, idxs, join, imap):
     """Strip names to keep only accession IDs"""
     for node in tree[:tree.ntips]:
         items = node.name.split(delim)
         label = join.join([items[i] for i in idxs])
-        node.name = label
+        node.delim = label
+        node.imap = imap.get(node.delim)
     return tree
 
 
-def relabel_and_subsample_by_imap(tree, imap, minmap, subsample, relabel):
+def subsample_by_imap(tree, imap, minmap, subsample):
     # subsample to keep only tips in imap
     if subsample:
         keep = []
         for node in tree[:tree.ntips]:
-            if imap.get(node.name):
+            if node.imap:
                 keep.append(node.name)
         tree = tree.mod.prune(*keep)
-
-    # subsample to keep only tips in imap
-    if relabel:
-        for node in tree[:tree.ntips]:
-            node.name = imap[node.name]
 
     # filter by mincov
     if minmap:
         counts = {}
         for node in tree[:tree.ntips]:
-            pop = imap[node.name]
+            pop = imap.get(node.delim)
             if pop in counts:
                 counts[pop] += 1
             else:
@@ -174,22 +173,22 @@ def relabel_and_subsample_by_imap(tree, imap, minmap, subsample, relabel):
 
 def exclude_long_tips(tree, ingroup_z, outgroup_z):
     # get dict mapping tips to their list of tips to consider dropping
-    tip_dists = {i.name: i.dist for i in tree[:tree.ntips]}
+    tips = tree[:tree.ntips]
 
     # get tip len distribution
-    ingroup_dists = [j for (i, j) in tip_dists.items() if i != "outgroup"]
+    ingroup_dists = [i.dist for i in tips if i.imap != "outgroup"]
     mean = np.mean(ingroup_dists)
     stdev = np.std(ingroup_dists)
 
     droplist = []
-    for name, dist in tip_dists.items():
-        zi = abs(dist - mean) / stdev
-        if name != "outgroup":
+    for node in tips:
+        zi = abs(node.dist - mean) / stdev
+        if node.imap != "outgroup":
             if zi > ingroup_z:
-                droplist.append(name)
+                droplist.append(node.name)
         else:
             if zi > outgroup_z:
-                droplist.append(name)
+                droplist.append(node.name)
 
     # return tree with outlier tips dropped
     if droplist:
@@ -198,22 +197,9 @@ def exclude_long_tips(tree, ingroup_z, outgroup_z):
     return tree
 
 
-def collapse_and_require_outgroups(tree, imap, relabel, require_outgroups, collapse_outgroups):
-    # get the node names to fetch
-    if not relabel:
-        outgroups = [i for (i, j) in imap.items() if j == "outgroup"]
-    else:
-        outgroups = ["outgroup"]
-    outgroups = [i for i in outgroups if i in tree.get_tip_labels()]
-
-    # fetch outgroup nodes
-    if outgroups:
-        try:        
-            onodes = tree.get_nodes(*outgroups)
-        except ValueError:
-            onodes = []
-    else:
-        onodes = []
+def collapse_and_require_outgroups(tree, imap, require_outgroups, collapse_outgroups):
+    # get the delim labels from imap that are in the tree
+    onodes = [i for i in tree[:tree.ntips] if i.imap == "outgroup"]
 
     # return options for no outgroups present
     if not onodes:
@@ -234,10 +220,10 @@ def collapse_and_require_outgroups(tree, imap, relabel, require_outgroups, colla
 
 
 def filter_by_max_copies(tree, max_copies):
-    tips = tree.get_tip_labels()
-    if any(tips.count(i) > max_copies for i in set(tips)):
-        return tree, True
-    return tree, False
+    delims = [i.delim for i in tree[:tree.ntips]]
+    if any(delims.count(i) > max_copies for i in set(delims)):
+        return True
+    return False
 
 
 def run_tree_filter(args):
@@ -261,14 +247,17 @@ def run_tree_filter(args):
 
     # check required args
     if args.collapse_outgroups or args.require_outgroups:
-        assert imap, "must provide an --imap when using --collapse-outgroups or --require-outgroups"
-        assert "outgroup" in imap.values(), "imap must contain a population named 'outgroup' when using --collapse-outgroups or --require-outgroups"
+        if not imap:
+            raise ValueError("must provide an --imap when using --collapse-outgroups or --require-outgroups")
+        if "outgroup" not in imap.values():
+            raise ValueError("imap must contain a population named 'outgroup' when using --collapse-outgroups or --require-outgroups")
 
-    # load the trees [todo: support, etc. here?]
-    trees = toytree.mtree(args.input).treelist
+    if not args.max_copies:
+        args.max_copies = float('inf')
 
     # store filtering stats
-    ntrees = len(trees)
+    ntrees_start = 0
+    ntrees_end = 0
     outlier_tips_removed = 0
     filters = {
         "minmap": 0,
@@ -277,59 +266,59 @@ def run_tree_filter(args):
         "max-copies": 0,
     }
 
-    # ... write parallel loop here...
+    if args.out:
+        out_handle = open(args.out, "w")
 
-    # [1] relabel by split-select-rejoin
-    if args.delim:
-        trees = [relabel_tips_by_delim(i, args.delim, args.delim_idxs, args.delim_join) for i in trees]
+    # loop over trees
+    assert args.input.is_file, f"input file '{args.input}' not found"
+    for newick in args.input.open().readlines():
+        if not newick:
+            continue
+        tree = toytree.tree(newick)
+        ntrees_start += 1
+        tree = set_delim_and_imap_labels(tree, args.delim, args.delim_idxs, args.delim_join, imap)
 
-    # [2] subsample and/or relabel by imap
-    if imap:
-        results = [relabel_and_subsample_by_imap(i, imap, minmap, args.subsample, args.relabel) for i in trees]
-        filters["minmap"] = sum(j for (i, j) in results)
-        trees = [i for (i, j) in results if not j]
+        # imap methods
+        if imap:
+            tree, filt = subsample_by_imap(tree, imap, minmap, args.subsample)
+            filters['minmap'] += int(filt)
+        if args.exclude_outliers:
+            npre = tree.ntips
+            tree = exclude_long_tips(tree, args.edge_outlier_ingroup, args.edge_outlier_outgroup)
+            npost = tree.ntips
+            outlier_tips_removed += npre - npost
+        if args.collapse_outgroups or args.require_outgroups:
+            tree, filt = collapse_and_require_outgroups(tree, imap, args.require_outgroups, args.collapse_outgroups)
+            if filt:
+                filters['require-outgroup'] += int(filt)
+                continue
 
-    # [3] exclude outlier edges
-    if args.exclude_outliers:
-        pre_tips = sum(i.ntips for i in trees)
-        trees = [exclude_long_tips(i, args.edge_outlier_ingroup, args.edge_outlier_outgroup) for i in trees]
-        post_tips = sum(i.ntips for i in trees)        
-        outlier_tips_removed = pre_tips - post_tips
+        # filters
+        if tree.ntips < args.min_tips:
+            filters["min-tips"] += int(filt)
+            continue
+        if filter_by_max_copies(tree, args.max_copies):
+            filters["max-copies"] += int(filt)
+            continue
 
-    # [4] collapse outgroups (warn if no samples named outgroup?)
-    if args.collapse_outgroups or args.require_outgroups:
-        results = [collapse_and_require_outgroups(i, imap, args.relabel, args.require_outgroups, args.collapse_outgroups) for i in trees]
-        filters["require-outgroup"] = sum(j for (i, j) in results)
-        trees = [i for (i, j) in results if not j]
-
-    # [5] filter by min-tips
-    if args.min_tips:
-        results = [(i, i.ntips < args.min_tips) for i in trees]
-        filters["min-tips"] = sum(j for (i, j) in results)
-        trees = [i for (i, j) in results if not j]
-
-    # [6] filter by max-copies
-    if args.max_copies:
-        results = [filter_by_max_copies(i, args.max_copies) for i in trees]
-        filters["max-copies"] = sum(j for (i, j) in results)
-        trees = [i for (i, j) in results if not j]
+        # relabel
+        if args.relabel_imap or args.relabel_delim:
+            for node in tree[:tree.ntips]:
+                node.name = node.delim
+        # write
+        ntrees_end += 1
+        if args.out:
+            out_handle.write(f"{tree.write()}\n")
+        else:
+            print(tree.write(), file=sys.stdout)
 
     # print stats to stderr
     print(f"CMD: {' '.join(sys.argv[:])}", file=sys.stderr)
-    print(f"ntrees start = {ntrees}", file=sys.stderr)
+    print(f"ntrees start = {ntrees_start}", file=sys.stderr)
     for key in filters:
         print(f"trees filtered by {key} = {filters[key]}", file=sys.stderr)
-    print(f"ntrees end = {len(trees)}", file=sys.stderr)
+    print(f"ntrees end = {ntrees_end}", file=sys.stderr)
     print(f"outlier tips removed = {outlier_tips_removed}", file=sys.stderr)    
-
-    # print to stdout or write to file
-    if not trees:
-        logger.warning("no trees passed filtering")
-    newicks = "\n".join(i.write() for i in trees)
-    if args.out:
-        print(newicks, file=args.out)
-    else:
-        print(newicks, file=sys.stdout)
 
 
 def main():

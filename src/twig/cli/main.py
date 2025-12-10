@@ -124,7 +124,7 @@ def main(cmd: Optional[str] = None) -> int:
             logger.warning("interrupted by user")
         except Exception as exc:
             logger.error(exc)
-            logger.exception(exc)            
+            raise
         return 1
 
     # unreachable

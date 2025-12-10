@@ -66,7 +66,7 @@ def get_parser_tree_rooter(parser: ArgumentParser | None = None) -> ArgumentPars
         parser = ArgumentParser(**KWARGS)
 
     # path i/o args
-    parser.add_argument("-t", "--trees", type=Path, metavar="path", required=True, help="newick or multi-newick trees file")
+    parser.add_argument("-i", "--in", type=Path, metavar="path", required=True, help="newick or multi-newick trees file")
     parser.add_argument("-o", "--out", type=Path, metavar="path", help="outfile name else printed to stdout")
 
     # rooting options
@@ -105,16 +105,16 @@ def run_tree_rooter(args):
     set_log_level(args.log_level)
     logger.warning(args.trees)
     assert args.trees.exists(), f"trees file {args.trees}..."
-    
+
     # parse outfile args to list
     if args.outgroups_file:
-        outgroups = [i.strip() for i in args.outgroups.open().readlines()]
+        outgroups = [i.strip() for i in args.outgroups_file.open().readlines()]
     else:
         outgroups = args.outgroups
 
     if args.sptree:
         sptree = toytree.tree(args.sptree)
-        root_clades = get_rooting_clades(sptree, args.outgroups)
+        root_clades = get_rooting_clades(sptree, outgroups)
     else:
         root_clades = [i.split(",") for i in outgroups] if outgroups else []
     logger.debug(f"ordered rooting clades: {root_clades}")

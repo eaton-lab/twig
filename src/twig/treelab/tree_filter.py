@@ -8,6 +8,10 @@ among others.
 >>> tree-filter -t TREES -o OUT -c 1
 >>> tree-filter -t TREES -o OUT -I IMAP -M MINMAP
 >>> tree-filter -t TREES -o OUT -m 20
+
+TODO
+----
+Work over a generator of trees
 """
 
 from typing import List
@@ -122,7 +126,7 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     parser.add_argument("--require-outgroups", action="store_true", help="require at least one 'outgroup' sample")
     parser.add_argument("--collapse-outgroups", action="store_true", help="keep only the most distant 'outgroup' (assumes rooted trees)")
 
-    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="CRITICAL", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
+    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
     # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
     return parser
 
@@ -137,7 +141,6 @@ def relabel_tips_by_delim(tree, delim, idxs, join):
 
 
 def relabel_and_subsample_by_imap(tree, imap, minmap, subsample, relabel):
-
     # subsample to keep only tips in imap
     if subsample:
         keep = []
@@ -196,7 +199,6 @@ def exclude_long_tips(tree, ingroup_z, outgroup_z):
 
 
 def collapse_and_require_outgroups(tree, imap, relabel, require_outgroups, collapse_outgroups):
-    
     # get the node names to fetch
     if not relabel:
         outgroups = [i for (i, j) in imap.items() if j == "outgroup"]
@@ -274,6 +276,8 @@ def run_tree_filter(args):
         "min-tips": 0,
         "max-copies": 0,
     }
+
+    # ... write parallel loop here...
 
     # [1] relabel by split-select-rejoin
     if args.delim:

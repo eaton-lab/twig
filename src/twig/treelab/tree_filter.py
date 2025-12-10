@@ -18,6 +18,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from loguru import logger
 import numpy as np
 import toytree
+from twig.utils.logger_setup import set_log_level
 
 
 KWARGS = dict(
@@ -72,13 +73,13 @@ KWARGS = dict(
         Examples using IMAP/MINMAP
         --------------------------
         # subsample to names in imap
-        $ twig tree-filter -t NWK -i IMAP > subsample-trees.nwk
+        $ twig tree-filter -i NWK -i IMAP > subsample-trees.nwk
 
         # subsample and relabel to pop names in imap
-        $ twig tree-filter -t NWK -i IMAP --relabel > relabeled-trees.nwk
+        $ twig tree-filter -i NWK -I IMAP --relabel > relabeled-trees.nwk
 
         # subsample, relabel, and keep only one outgroup (best to root before)
-        $ twig tree-filter -t NWK -i IMAP --relabel --collapse > final-trees.nwk
+        $ twig tree-filter -i NWK -I IMAP --relabel --collapse > final-trees.nwk
     """)
 )
 
@@ -95,7 +96,7 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
         parser = ArgumentParser(**KWARGS)
 
     # path i/o args
-    parser.add_argument("-t", "--trees", type=Path, metavar="path", required=True, help="newick or multi-newick trees file")
+    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="newick or multi-newick trees file")
     parser.add_argument("-o", "--out", type=Path, metavar="path", help="outfile name else printed to stdout")
 
     # parsing names
@@ -105,8 +106,8 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
 
     # filter on names
     # parser.add_argument("-i", "--include", type=str, metavar="str", nargs="+", help="subset of names to keep")
-    parser.add_argument("-i", "--imap", type=Path, metavar="path", help=r"filepath listing names to keep, or assigning (name population)")
-    parser.add_argument("-m", "--minmap", type=Path, metavar="path", help=r"filepath listing (population mincov) for filters")
+    parser.add_argument("-I", "--imap", type=Path, metavar="path", help=r"filepath listing names to keep, or assigning (name population)")
+    parser.add_argument("-M", "--minmap", type=Path, metavar="path", help=r"filepath listing (population mincov) for filters")
 
     # filter on tree data
     parser.add_argument("-s", "--min-tips", type=int, metavar="int", default=4, help="min tips after pruning [4]")
@@ -238,7 +239,7 @@ def filter_by_max_copies(tree, max_copies):
 
 
 def run_tree_filter(args):
-    toytree.set_log_level(args.log_level)
+    set_log_level(args.log_level, args.log_file)
 
     # parse the imap
     imap = {}
@@ -262,7 +263,7 @@ def run_tree_filter(args):
         assert "outgroup" in imap.values(), "imap must contain a population named 'outgroup' when using --collapse-outgroups or --require-outgroups"
 
     # load the trees [todo: support, etc. here?]
-    trees = toytree.mtree(args.trees).treelist
+    trees = toytree.mtree(args.input).treelist
 
     # store filtering stats
     ntrees = len(trees)

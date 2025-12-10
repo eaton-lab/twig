@@ -44,16 +44,16 @@ KWARGS = dict(
         Examples
         --------
         # relabel by split-select-join on tip names
-        $ twig tree-filter -t NWK -d '-' -di 0 2 -dj '-' > relabeled-trees.nwk
+        $ twig tree-filter -i NWK -d '-' -di 0 2 -dj '-' > relabeled-trees.nwk
 
         # get only single-copy gene trees
-        $ twig tree-filter -t NWK -c 1 > single-copy-trees.nwk
+        $ twig tree-filter -i NWK -c 1 > single-copy-trees.nwk
 
         # get only trees w/ >20 tips
-        $ twig tree-filter -t NWK -m 20 > min20-trees.nwk
+        $ twig tree-filter -i NWK -m 20 > min20-trees.nwk
 
         # exclude outlier edges
-        $ twig tree-filter -t NWK --exclude -ei 4 > cleaned-trees.nwk
+        $ twig tree-filter -i NWK --exclude -ei 4 > cleaned-trees.nwk
 
         Example IMAP
         -------------
@@ -73,7 +73,7 @@ KWARGS = dict(
         Examples using IMAP/MINMAP
         --------------------------
         # subsample to names in imap
-        $ twig tree-filter -i NWK -i IMAP > subsample-trees.nwk
+        $ twig tree-filter -i NWK -I IMAP > subsample-trees.nwk
 
         # subsample and relabel to pop names in imap
         $ twig tree-filter -i NWK -I IMAP --relabel > relabeled-trees.nwk
@@ -239,7 +239,7 @@ def filter_by_max_copies(tree, max_copies):
 
 
 def run_tree_filter(args):
-    set_log_level(args.log_level, args.log_file)
+    set_log_level(args.log_level)
 
     # parse the imap
     imap = {}
@@ -339,8 +339,6 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         logger.warning("interrupted by user")
-    # except TwigError as exc:
-    #     logger.error(exc)
     except Exception as exc:
         logger.error(exc)
         raise

@@ -238,6 +238,7 @@ def run_tree_filter(args):
                 if len(data) == 1:
                     label = pop = data[0]
                 else:
+                    print(data)
                     label = data[0]
                     pop = data[1]
                 imap[label] = pop

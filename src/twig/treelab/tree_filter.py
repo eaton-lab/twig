@@ -236,7 +236,7 @@ def run_tree_filter(args):
             for line in hin.readlines():
                 data = line.strip().split()
                 if len(data) == 1:
-                    label = pop = data
+                    label = pop = data[0]
                 else:
                     label = data[0]
                     pop = data[1]

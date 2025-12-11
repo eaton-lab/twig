@@ -69,15 +69,20 @@ def get_parser_tree_rooter(parser: ArgumentParser | None = None) -> ArgumentPars
     parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="newick or multi-newick trees file")
     parser.add_argument("-o", "--out", type=Path, metavar="path", help="outfile name else printed to stdout")
 
+    # parsing names
+    parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip labels")
+    parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
+    parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
+
     # rooting options
     parser.add_argument("-s", "--sptree", type=Path, metavar="path", help="rooted species tree")
     parser.add_argument("-r", "--outgroups", type=str, metavar="str", nargs="+", help="list outgroup tip labels")
-    parser.add_argument("-R", "--outgroups-file", type=Path, metavar="path", help="file listing outgroup tip labels")
+    parser.add_argument("-I", "--imap", type=Path, metavar="path", help="get outgroup assignment from tabular imap file listing 'sample\tpopulation'")
 
     # return option
     parser.add_argument("-m", "--mad", action="store_true", help="use minimal ancestor deviation to estimate root of remaining unrooted trees")
     parser.add_argument("-x", "--not-rooted", action="store_true", help="return the trees that could not be rooted given the options")
-
+    parser.add_argument("-rd", "--relabel-delim", action="store_true", help="relabel tips by their delim parsed names")
     # logging
     parser.add_argument("-l", "--log-level", type=str, metavar="level", default="CRITICAL", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
     # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")    
@@ -100,23 +105,46 @@ def get_rooting_clades(sptree, outgroups):
     return root_clades[::-1]
 
 
+def set_delim_labels(tree, delim, idxs, join):
+    """Strip names to keep only accession IDs"""
+    for node in tree[:tree.ntips]:
+        items = node.name.split(delim)
+        label = join.join([items[i] for i in idxs])
+        node.delim = label
+    return tree
+
+
 def run_tree_rooter(args):
     # require -s -r or -R
+    print(toytree.__version__)
     set_log_level(args.log_level)
-    assert args.input.exists(), f"trees file {args.input}..."
+    assert args.input.exists(), f"trees file {args.input} not found."
 
-    # parse outfile args to list
-    if args.outgroups_file:
-        outgroups = [i.strip() for i in args.outgroups_file.open().readlines()]
+    # parse the imap
+    imap = {}
+    if args.imap:
+        with args.imap.open() as hin:
+            for line in hin.readlines():
+                data = line.strip().split()
+                if data:
+                    if len(data) == 1:
+                        label = pop = data[0]
+                    else:
+                        label = data[0]
+                        pop = data[1]
+                    imap[label] = pop
+        outgroups = [i for (i, j) in imap.items() if j == "outgroup"]
     else:
         outgroups = args.outgroups
 
+    # get root_clades from sptree or outgroups
     if args.sptree:
-        sptree = toytree.tree(args.sptree)
+        sptree = toytree.tree(args.sptree, internal_labels="name")
         root_clades = get_rooting_clades(sptree, outgroups)
     else:
         root_clades = [i.split(",") for i in outgroups] if outgroups else []
     logger.debug(f"ordered rooting clades: {root_clades}")
+    assert root_clades, "no root clades found"
 
     # track success
     count = {"rerooted": 0, "not-rerooted": 0}
@@ -126,15 +154,18 @@ def run_tree_rooter(args):
     # iterate over newicks in treefile
     with args.input.open() as datain:
         for tidx, nwk in enumerate(datain.readlines()):
-            tree = toytree.tree(nwk)
-            tips = tree.get_tip_labels()
+            if not nwk:
+                continue
+            tree = toytree.tree(nwk, internal_labels="name")
+            tree = set_delim_labels(tree, args.delim, args.delim_idxs, args.delim_join)
             rooted = False
             for rc in root_clades:
                 try:
-                    rc = set(i for i in rc if i in tips)
-                    if not rc:
+                    onodes = [i for i in tree[:tree.ntips] if i.delim in rc]
+                    print(onodes)
+                    if not onodes:
                         continue
-                    tree = tree.root(*rc)
+                    tree = tree.root(*onodes)
                     rooted = True
                     break
                 except (AttributeError, ValueError):
@@ -150,12 +181,12 @@ def run_tree_rooter(args):
 
     # use MAD to root not-rerooted trees
     if args.mad:
-        for t in utrees:
-            try:
-                t.mod.root_on_minimal_ancestor_deviation()
-            except IndexError:
-                print(t.write())
-                raise
+        # for t in utrees:
+        #     try:
+        #         t.mod.root_on_minimal_ancestor_deviation()
+        #     except IndexError:
+        #         print(t.write())
+        #         raise
         rtrees += [i.mod.root_on_minimal_ancestor_deviation() for i in utrees]
         count['mad-rooted'] = count['not-rerooted']
         count['not-rerooted'] = 0

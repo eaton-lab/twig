@@ -172,6 +172,12 @@ def run_tree_rooter(args):
                     pass
                 except toytree.utils.ToytreeError:
                     pass
+
+            # set labels on tree
+            if args.relabel_delim:
+                for node in tree[:tree.ntips]:
+                    node.name = node.delim
+
             if rooted:
                 count['rerooted'] += 1
                 rtrees.append(tree)

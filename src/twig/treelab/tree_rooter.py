@@ -116,7 +116,6 @@ def set_delim_labels(tree, delim, idxs, join):
 
 def run_tree_rooter(args):
     # require -s -r or -R
-    print(toytree.__version__)
     set_log_level(args.log_level)
     assert args.input.exists(), f"trees file {args.input} not found."
 
@@ -162,7 +161,6 @@ def run_tree_rooter(args):
             for rc in root_clades:
                 try:
                     onodes = [i for i in tree[:tree.ntips] if i.delim in rc]
-                    print(onodes)
                     if not onodes:
                         continue
                     tree = tree.root(*onodes)

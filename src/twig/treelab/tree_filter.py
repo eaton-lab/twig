@@ -296,15 +296,15 @@ def run_tree_filter(args):
         if args.collapse_outgroups or args.require_outgroups:
             tree, filt = collapse_and_require_outgroups(tree, imap, args.require_outgroups, args.collapse_outgroups)
             if filt:
-                filters['require-outgroup'] += int(filt)
+                filters['require-outgroup'] += 1
                 continue
 
         # filters
         if tree.ntips < args.min_tips:
-            filters["min-tips"] += int(filt)
+            filters["min-tips"] += 1
             continue
         if filter_by_max_copies(tree, args.max_copies):
-            filters["max-copies"] += int(filt)
+            filters["max-copies"] += 1
             continue
 
         # relabel

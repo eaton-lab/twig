@@ -9,8 +9,9 @@ twig [subcommand]
 """
 
 from typing import Optional
-import argparse
-import textwrap
+import os
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from textwrap import dedent
 from loguru import logger
 from ..synteny.format_fasta import run_format_fasta, get_parser_format_fasta
 from ..synteny.format_gff import run_format_gff, get_parser_format_gff
@@ -19,30 +20,37 @@ from ..synteny.format_gff import run_format_gff, get_parser_format_gff
 # from ..synteny.dot_draw import run_dot_draw, get_parser_dot_draw
 # from ..synteny.dot_coords import run_dot_coords, get_parser_dot_coords
 from ..seqlab.diamond_blastp import run_diamond_blastp, get_parser_diamond_blastp
-from ..seqlab.macse import run_macse, get_parser_macse
+from ..seqlab.macse_prep import run_macse_prep, get_parser_macse_prep
+from ..seqlab.macse_align import run_macse_align, get_parser_macse_align
+from ..seqlab.macse_refine import run_macse_refine, get_parser_macse_refine
 from ..treelab.tree_filter import run_tree_filter, get_parser_tree_filter
 from ..treelab.tree_rooter import run_tree_rooter, get_parser_tree_rooter
 #from ..utils.logger_setup import set_log_level
 # from ..utils.make_wide import make_wide
 from twig import __version__ as VERSION
 
-CLI_NAME = "twig"
-# VERSION = "0.0.1"
+THREAD_ENV_VARS = (
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+    "BLIS_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+)
 
 
-def setup_parsers() -> argparse.ArgumentParser:
+def setup_parsers() -> ArgumentParser:
     """Setup and return an ArgumentParser w/ subcommands."""
-    parser = argparse.ArgumentParser(
-        CLI_NAME,
-        usage=f"{CLI_NAME} [subcommand] --help",
-        formatter_class=lambda prog: argparse.RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
-        # formatter_class=CustomHelpFormatter,
-        description=textwrap.dedent("""
+    parser = ArgumentParser(
+        "twig",
+        usage="twig [subcommand] --help",
+        formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
+        description=dedent("""
             -----------------------------------------------------
-            |  %(prog)s: comparative genomics on trees              |
+            |  %(prog)s: tree-based workflows for integrative genomics |
             -----------------------------------------------------
             """),
-        epilog=textwrap.dedent(r"""
+        epilog=dedent(r"""
             Tutorials
             ---------
             # genome file formatting
@@ -78,7 +86,9 @@ def setup_parsers() -> argparse.ArgumentParser:
     # get_parser_lastal_align(subparsers)
     # get_parser_ortholog_graph(subparsers)
     # get_parser_ortholog_...(subparsers)    
-    get_parser_macse(subparsers)
+    get_parser_macse_prep(subparsers)
+    get_parser_macse_align(subparsers)
+    get_parser_macse_refine(subparsers)
     get_parser_tree_filter(subparsers)
     get_parser_tree_rooter(subparsers)    
 
@@ -109,10 +119,16 @@ def main(cmd: Optional[str] = None) -> int:
         "format-fasta": run_format_fasta,
         "format-gff": run_format_gff,
         # "genome-table": run_genome_table,
-        "macse": run_macse,
+        "macse-prep": run_macse_prep,
+        "macse-align": run_macse_align,
+        "macse-refine": run_macse_refine,
         "tree-filter": run_tree_filter,
         "tree-rooter": run_tree_rooter,
     }
+
+    # in cli pin numpy to single-threading
+    for k in THREAD_ENV_VARS:
+        os.environ.setdefault(k, '1')
 
     # run function and handle errors
     if args.subcommand:

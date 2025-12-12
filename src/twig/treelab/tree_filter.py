@@ -14,7 +14,6 @@ TODO
 Work over a generator of trees
 """
 
-from typing import List
 import sys
 import textwrap
 from pathlib import Path
@@ -86,6 +85,10 @@ KWARGS = dict(
 
         # subsample, relabel, and keep only one outgroup (best to root before)
         $ twig tree-filter -i NWK -I IMAP -ri --collapse > final-trees.nwk
+
+        Example on a many trees in different paths
+        -------------------------------------------
+        $ parallel "twig tree-filter -i {} ... > {}.filtered" ::: TREES/*.nwk
     """)
 )
 
@@ -124,6 +127,7 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     # actions
     parser.add_argument("-rd", "--relabel-delim", action="store_true", help="relabel tips by their delim parsed names")
     parser.add_argument("-ri", "--relabel-imap", action="store_true", help="relabel tips to their imap mapped names")
+    # parser.add_argument("-x", "--nexus", action="store_true", help="export in NEXUS format. Retains path/tree names")
     parser.add_argument("--subsample", action="store_true", help="subsample to include only tips in imap")
     parser.add_argument("--exclude-outliers", action="store_true", help="exclude tips with outlier edge lengths (>ei or >eo)")
     parser.add_argument("--require-outgroups", action="store_true", help="require at least one 'outgroup' sample")

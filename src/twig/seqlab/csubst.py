@@ -14,18 +14,17 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from loguru import logger
 from twig.utils.logger_setup import set_log_level
 
-BIN = Path(sys.prefix).parent / "csubst" / "bin"
-BIN_CSUBST = str(BIN / "csubst")
-BIN_IQTREE = str(BIN / "iqtree")
-
 INSTALL_MSG = """\
-Due to conflicting dependencies, the recommended workflow to call
-'csubst' from 'twig' is to install csubst in a separate conda env.
-By default, twig will look for csubst installed in an env called
-'csubst', but you can set the channel name in the command line.
-Install 'csubst' and its dependencies in an env using the following:
+A 'csubst' binary was not found in a conda env named '{env}'.
 
-conda create -n csubst csubst 'iqtree<3' Python=3.10 --strict-channel -c conda-forge -c bioconda
+Due to conflicting dependencies, I recommend creating a separate conda
+env to install csubst into, and which can be called from twig by using
+the -e parameter to specify the env name, or using the name 'csubst',
+as in the installation command below. Note, to call csubst from twig,
+do not activate the csubst env, just specify the name with -e.
+
+$ conda create -n csubst csubst 'iqtree<3' Python=3.10 --strict-channel -c conda-forge -c bioconda
+$ twig csubst -a MSA -t NWK -g FG -o OUT/PRE -e csubst
 
 """
 
@@ -46,7 +45,9 @@ KWARGS = dict(
     epilog=dedent("""
         Examples
         --------
-        $ twig csubst --...
+        $ twig csubst -a MSA -t NWK -g FG -o OUT/PRE   # OUT/PRE.cb...
+
+        $ twig csubst -a MSA -t NWK -g FG -o OUT/PRE   # OUT/PRE.cb...
     """)
 )
 
@@ -66,6 +67,7 @@ def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
     parser.add_argument("-a", "--alignment", type=Path, metavar="path", required=True, help="input CDS alignment")
     parser.add_argument("-t", "--tree", type=Path, metavar="path", required=True, help="input rooted tree file")
     parser.add_argument("-g", "--foreground", type=Path, metavar="path", help="foreground file")
+    # parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
     parser.add_argument("-o", "--outdir", type=Path, metavar="path", help="output directory. Created if it doesn't exist")
     parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds filename is used")
 
@@ -75,6 +77,7 @@ def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
     parser.add_argument("-F", "--foreground-table", action="store_true", help="foreground file is a table (fg_format=2)")
 
     # others
+    parser.add_argument("-e", "--env", type=Path, metavar="path", help="conda env name where 'csubst' in installed [csubst]")
     parser.add_argument("-j", "--threads", type=int, metavar="int", default=1, help="number of threads")
     parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
     parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
@@ -87,8 +90,14 @@ def run_csubst(args):
     """..."""
     set_log_level(args.log_level)
 
+    BIN = Path(sys.prefix).parent / f"{args.env}" / "bin"
+    BIN_CSUBST = str(BIN / "csubst")
+    # BIN_IQTREE = str(BIN / "iqtree")
+
     # check that macse is in PATH
-    assert Path(BIN_CSUBST).exists(), f"csubst binary not found. Checked: {BIN_CSUBST}"
+    if not Path(BIN_CSUBST).exists():
+        logger.error(INSTALL_MSG)
+        sys.exit(1)
 
     # ensure outdir exists
     args.outdir.mkdir(exist_ok=True)

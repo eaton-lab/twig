@@ -47,16 +47,19 @@ KWARGS = dict(
     epilog=textwrap.dedent("""
         Examples
         --------
-        $ twig macse-refine -i CDS -o OUT -p TEST
-        $ twig macse-refine -i CDS -o OUT -mh 0.1 -mi 0.5 -ti 50 -te 50 -mc 15 -c 20
-        $ twig macse-refine -i CDS -o OUT -mh 0.3 -mi 0.8 -ti 25 -te 25 -mc 15 -c 20
-        $ twig macse-refine -i CDS -o OUT -mh 0.5 -mc 10 -k -xa -ml 200 -e '^sppA.*'
-        $ twig macse-refine -i CDS -o OUT -s '^sppA.*'
+        $ twig macse-refine -i CDS -o PATH/PRE
+        $ twig macse-refine -i CDS -mh 0.1 -mi 0.5 -ti 66 -te 66 -mc 15 -c 20
+        $ twig macse-refine -i CDS -mh 0.3 -mi 0.8 -ti 33 -te 33 -mc 15 -c 20
+        $ twig macse-refine -i CDS -mh 0.5 -mc 10 -k -xa -ml 200 -e '^sppA.*'
+        $ twig macse-refine -i CDS -s '^sppA.*'
+
+        # run parallel jobs on many cds files
+        $ parallel -j 10 "twig macse-refine -i {} ..."  ::: CDS/*.msa.nt.fa
 
         # full pipeline
-        $ twig macse-prep -i CDS -o OUT -p PRE
-        $ twig macse-align -i OUT/PRE.nt.fa -o OUT -p PRE
-        $ twig macse-refine -i OUT/PRE.msa.nt.fa -o OUT
+        $ twig macse-prep -i CDS                     # {CDS}.nt.fa, ...
+        $ twig macse-align -i CDS.nt.fa -o CDS       # {CDS}.msa.nt.fa, ...
+        $ twig macse-refine -i CDS.msa.nt.fa -o CDS  # {CDS}.msa.refined.nt.fa, ...
     """)
 )
 
@@ -73,7 +76,7 @@ def get_parser_macse_refine(parser: ArgumentParser | None = None) -> ArgumentPar
         parser = ArgumentParser(**KWARGS)
 
     # path args
-    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS (aligned or unaligned)")
+    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input aligned CDS")
     parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
     parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
     parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")

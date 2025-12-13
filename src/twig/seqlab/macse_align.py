@@ -37,10 +37,15 @@ KWARGS = dict(
     epilog=textwrap.dedent("""
         Examples
         --------
-        $ twig macse-align -i CDS -o OUT -p TEST
+        $ twig macse-align -i CDS -o /OUT/PRE
 
         # run parallel jobs on many cds files
-        $ parallel -j 10 'twig macse-prep -i {} -o OUT -p {/.}' ::: CDS/*.fa
+        $ parallel -j 10 "twig macse-align -i {} ..." ::: CDS/*.nt.fa
+
+        # full pipeline
+        $ twig macse-prep -i CDS                     # {CDS}.nt.fa, ...
+        $ twig macse-align -i CDS.nt.fa -o CDS       # {CDS}.msa.nt.fa, ...
+        $ twig macse-refine -i CDS.msa.nt.fa -o CDS  # {CDS}.msa.refined.nt.fa, ...
     """)
 )
 

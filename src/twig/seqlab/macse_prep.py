@@ -41,14 +41,19 @@ KWARGS = dict(
     epilog=textwrap.dedent("""
         Examples
         --------
-        $ twig macse-prep -i CDS -o OUT -p TEST
-        $ twig macse-prep -i CDS -o OUT -mh 0.1 -mi 0.5 -ti 50 -te 50 -mc 15 -c 20
-        $ twig macse-prep -i CDS -o OUT -mh 0.3 -mi 0.8 -ti 25 -te 25 -mc 15 -c 20
-        $ twig macse-prep -i CDS -o OUT -mh 0.5 -mc 10 -k -xa -ml 200 -e '^sppA.*'
-        $ twig macse-prep -i CDS -o OUT -s '^sppA.*'
+        $ twig macse-prep -i CDS -o OUT/PRE
+        $ twig macse-prep -i CDS -mh 0.1 -mi 0.5 -ti 50 -te 50 -mc 15 -c 20
+        $ twig macse-prep -i CDS -mh 0.3 -mi 0.8 -ti 25 -te 25 -mc 15 -c 20
+        $ twig macse-prep -i CDS -mh 0.5 -mc 10 -k -xa -ml 200 -e '^sppA.*'
+        $ twig macse-prep -i CDS -s '^sppA.*'
 
         # run parallel jobs on many cds files
-        $ parallel -j 10 'twig macse-prep -i {} -o {} ::: CDS/*.fa
+        $ parallel -j 10 "twig macse-prep -i {} ..."  ::: CDS/*.fa
+
+        # full pipeline
+        $ twig macse-prep -i CDS                     # {CDS}.nt.fa, ...
+        $ twig macse-align -i CDS.nt.fa -o CDS       # {CDS}.msa.nt.fa, ...
+        $ twig macse-refine -i CDS.msa.nt.fa -o CDS  # {CDS}.msa.refined.nt.fa, ...
     """)
 )
 
@@ -67,7 +72,6 @@ def get_parser_macse_prep(parser: ArgumentParser | None = None) -> ArgumentParse
     # path args
     parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS (aligned or unaligned)")
     parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
-    parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds filename is used")
     parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
     parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")
     # options

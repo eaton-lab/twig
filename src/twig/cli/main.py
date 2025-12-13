@@ -82,8 +82,8 @@ def setup_parsers() -> ArgumentParser:
     get_parser_format_gff(subparsers)
     # get_parser_dot_coords(subparsers)
     # get_parser_dot_draw(subparsers)
-    get_parser_diamond_blastp(subparsers)
-    get_parser_diamond_blastp_all(subparsers)
+    get_parser_diamond_bl(subparsers)
+    get_parser_diamond_pw(subparsers)
     # get_parser_lastal_align(subparsers)
     # get_parser_ortholog_graph(subparsers)
     # get_parser_ortholog_...(subparsers)    
@@ -115,8 +115,8 @@ def main(cmd: Optional[str] = None) -> int:
     dispatch = {
         # "dot-coords": run_dot_coords,
         # "dot-draw": run_dot_draw,
-        "diamond-bl": run_diamond_blastp,
-        "diamond-pw": run_diamond_blastp_all,
+        "diamond-bl": run_diamond_bl,
+        "diamond-pw": run_diamond_pw,
         # "format-data": run_format_data,
         "format-fasta": run_format_fasta,
         "format-gff": run_format_gff,

@@ -252,7 +252,10 @@ def run_macse_refine(args):
 
     # check that macse is in PATH
     assert Path(BIN_MACSE).exists(), f"macse binary not found. Checked: {BIN_MACSE}"
-    assert args.input.exists() and args.input.is_file(), f"{args.input} not found"
+    if not (args.input.exists() and args.input.is_file()):
+        raise IOError(f"{args.input} not found")
+    if args.tree and not (args.tree.exists() and args.tree.is_file()):
+            raise IOError(f"{args.tree} not found")
 
     # only one or the other allowed
     nargs = len([i for i in [args.exclude, args.subsample, args.tree] if i])

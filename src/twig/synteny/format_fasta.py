@@ -48,7 +48,7 @@ KWARGS = dict(
         --------
         # operations on genome scaffolds
         $ twig format-fasta GENOME --subset 3 --relabel-list A B C > genome.fa
-        $ twig format-fasta GENOME --subset-idx 0 1 2 3 --relabel-prefix-idx A_ > subgenomeA.fa
+        $ twig format-fasta GENOME --subset-idx {0..3} --relabel-prefix-idx A_ > subgenomeA.fa
         $ twig format-fasta GENOME --subset-names Chr1 Chr2 --relabel-list chromosome_1 chromosome_2 > genome.fa
         $ twig format-fasta GENOME --sort-len --subset 8 --max-width 80 > chromosomes.fa
 
@@ -76,17 +76,17 @@ def get_parser_format_fasta(parser: ArgumentParser | None = None) -> ArgumentPar
         parser = ArgumentParser(**KWARGS)
 
     # add arguments
-    parser.add_argument("fasta", type=Path, help="a multi-fasta sequence file (can be .gz)")
+    parser.add_argument("fasta", type=Path, help="a fasta sequence file (can be .gz)")
 
     sort_options = parser.add_mutually_exclusive_group()
     sort_options.add_argument("--sort-alpha", action="store_true", help="sort chromosomes by name alphanumerically")
     sort_options.add_argument("--sort-len", action="store_true", help="sort chromosomes by length (longest to shortest)")
 
     relabel_options = parser.add_mutually_exclusive_group()
-    relabel_options.add_argument("--relabel-prefix", type=str, metavar="str", default="", help="append prefix label to start of existing labels (default='')")
-    relabel_options.add_argument("--relabel-prefix-idx", type=str, metavar="str", default="", help="overwrite labels with {{prefix}}{{counter}} using incrementing counter (default='')")
-    relabel_options.add_argument("--relabel-list", type=str, metavar="str", nargs="+", help="overwrite labels with new labels provided as a list")
-    parser.add_argument("--map", type=Path, metavar="Path", default=None, help="path to write optional relabel translation map (TSV format)")
+    relabel_options.add_argument("--relabel-prefix", type=str, metavar="str", default="", help="append prefix label to start of existing labels [%(default)s]")
+    relabel_options.add_argument("--relabel-prefix-idx", type=str, metavar="str", default="", help="overwrite labels with {{prefix}}{{counter}} using incrementing counter [%(default)s]")
+    relabel_options.add_argument("--relabel-list", type=str, metavar="str", nargs="+", help="overwrite labels with new labels provided as a list [%(default)s]")
+    parser.add_argument("--map", type=Path, metavar="Path", default=None, help="path to write optional relabel translation map (TSV format) [%(default)s]")
 
     sub_options = parser.add_mutually_exclusive_group()
     sub_options.add_argument("--subset", type=int, metavar="int", default=None, help="subselect the first N sequences after optional sorting")
@@ -296,7 +296,7 @@ def run_format_fasta(args):
         if args.map:
             logger.debug(f"fasta labels translation .tsv written to {args.map}")
             with open(args.map, 'w') as file:
-                file.write("\n".join("\t".join([i, j]) for (i, j) in zip(rdict, rdict)))
+                file.write("\n".join("\t".join([i, j]) for (i, j) in zip(rdict, sdict)))
 
         # if doing revcomp check if it is DNA or AA sequences
         dna = True

@@ -35,7 +35,7 @@ DIAMOND_BIN = Path(sys.prefix) / "bin" / "diamond"
 TMPDIR = gettempdir()
 
 
-def get_parser_diamond_blastp_all(parser: ArgumentParser | None = None) -> ArgumentParser:
+def get_parser_diamond_pw(parser: ArgumentParser | None = None) -> ArgumentParser:
     """Return a parser for relabel tool.
     """
     kwargs = dict(
@@ -92,16 +92,16 @@ def get_parser_diamond_blastp_all(parser: ArgumentParser | None = None) -> Argum
     return parser
 
 
-def run_diamond_blastp_all(args):
+def run_diamond_pw(args):
     """..."""
     logger.info(args.data)
 
 
 
 def main():
-    parser = get_parser_diamond_blastp_all()
+    parser = get_parser_diamond_pw()
     args = parser.parse_args()
-    run_diamond_blastp_all(args)
+    run_diamond_pw(args)
 
 
 if __name__ == "__main__":

@@ -73,7 +73,7 @@ KWARGS = dict(
     """)
 )
 
-def get_parser_diamond_blastp(parser: ArgumentParser | None = None) -> ArgumentParser:
+def get_parser_diamond_bl(parser: ArgumentParser | None = None) -> ArgumentParser:
     """Return a parser for relabel tool.
     """
     # create parser or connect as subparser to cli parser
@@ -255,7 +255,7 @@ def call_diamond_blastp(
     logger.complete()
 
 
-def run_diamond_blastp(args):
+def run_diamond_bl(args):
     """Runs diamond blast with args parsed from sys or CLI."""
     # make database if target is a fasta
     if args.database or args.target.suffix == ".db":
@@ -271,9 +271,9 @@ def run_diamond_blastp(args):
         dbfile.unlink()
 
 def main():
-    parser = get_parser_diamond_blastp()
+    parser = get_parser_diamond_bl()
     args = parser.parse_args()
-    run_diamond_blastp(args)
+    run_diamond_bl(args)
 
 
 if __name__ == "__main__":

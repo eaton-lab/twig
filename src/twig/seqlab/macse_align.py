@@ -57,20 +57,10 @@ def get_parser_macse_align(parser: ArgumentParser | None = None) -> ArgumentPars
         parser = ArgumentParser(**KWARGS)
 
     # path args
-    parser.add_argument("-i", "--cds", type=Path, metavar="path", required=True, help="input CDS sequence (aligned or unaligned)")
-    parser.add_argument("-o", "--outdir", type=Path, metavar="path", required=True, help="output directory, created if it doesn't exist")
-    parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds filename is used")
-    # parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
-    # parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")
-    # options
-    # parser.add_argument("-ac", "--aln-trim-ends-min-coverage", type=float, metavar="float", default=0.4, help="trim alignment edges to where a min percent of samples have data [%(default)s]")
-    # parser.add_argument("-as", "--aln-trim-window-size", type=int, metavar="int", default=5, help="trim alignment using a sliding 'half_window_size' defined as ... [%(default)s]")
-    # parser.add_argument("-r", "--refine", action="store_true", help="run refineAlignment instead of AlignSequences")
-
+    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS sequence (aligned or unaligned)")
+    parser.add_argument("-o", "--out", type=Path, metavar="path", required=True, help="out prefix; parent dirs created if necessary [{input}]")
     # others
-    # parser.add_argument("-B", "--binary", type=Path, metavar="path", help="path to macse binary if not in $PATH")
     parser.add_argument("-m", "--max-refine-iter", type=int, metavar="int", default=-1, help="max refinement iterations during optimizing [default -1 = no limit]")
-
     parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
     parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
     # parser.add_argument("-k", "--keep", action="store_true", help="keep tmp files (for debugging)")
@@ -86,17 +76,23 @@ def run_macse_align(args):
     # check that macse is in PATH
     assert Path(BIN_MACSE).exists(), f"macse binary not found. Checked: {BIN_MACSE}"
 
-    # ensure outdir exists
-    args.outdir.mkdir(exist_ok=True)
-    args.prefix = args.prefix if args.prefix is not None else args.cds.name
+    # check in files
+    if not (args.input.exists() and args.input.is_file()):
+        raise IOError(f"{args.input} not found")
+
+    # ensure outpath and pdir exists
+    args.outprefix = args.out
+    if args.outprefix is None:
+        args.outprefix = args.input
+    args.outprefix.parent.mkdir(exist_ok=True)
 
     # bail out if final file exists
-    result = args.outdir / (args.prefix + ".msa.nt.fa")
+    result = args.outprefix.with_suffix(args.outprefix.suffix + ".msa.nt.fa")
     if result.exists() and not args.force:
-        logger.info(f"[{args.prefix}] [skipping] {result} already exists")
+        logger.warning(f"[{args.input.name}] [skipping] {result} already exists. Using --force to overwrite")
         return 0
-    call_macse_align(args.cds, args.outdir, args.prefix, args.max_refine_iter, args.verbose)
-    logger.info(f"[{args.prefix}] alignment written to {args.outdir}/{args.prefix}.nt.fa")
+    call_macse_align(args.input, args.outprefix, args.max_refine_iter, args.verbose)
+    logger.info(f"[{args.input.name}] alignment written to {args.outprefix}.nt.fa")
 
 
 def call_macse_align(cds_fasta: Path, outdir: Path, prefix: str, max_iter: int, verbose: bool):

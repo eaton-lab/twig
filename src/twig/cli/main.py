@@ -24,6 +24,7 @@ from ..seqlab.diamond_pw import run_diamond_pw, get_parser_diamond_pw
 from ..seqlab.macse_prep import run_macse_prep, get_parser_macse_prep
 from ..seqlab.macse_align import run_macse_align, get_parser_macse_align
 from ..seqlab.macse_refine import run_macse_refine, get_parser_macse_refine
+from ..seqlab.csubst import run_csubst, get_parser_csubst
 from ..treelab.tree_filter import run_tree_filter, get_parser_tree_filter
 from ..treelab.tree_rooter import run_tree_rooter, get_parser_tree_rooter
 #from ..utils.logger_setup import set_log_level
@@ -76,6 +77,7 @@ def setup_parsers() -> ArgumentParser:
         help="-----------------------------------------------------",
     )
 
+    get_parser_csubst(subparsers)
     get_parser_genome_table(subparsers)
     get_parser_format_fasta(subparsers)
     get_parser_format_gff(subparsers)
@@ -115,6 +117,7 @@ def main(cmd: Optional[str] = None) -> int:
     dispatch = {
         # "dot-coords": run_dot_coords,
         # "dot-draw": run_dot_draw,
+        "csubst": run_csubst,
         "diamond-bl": run_diamond_bl,
         "diamond-pw": run_diamond_pw,
         "format-fasta": run_format_fasta,

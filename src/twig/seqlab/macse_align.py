@@ -57,8 +57,8 @@ def get_parser_macse_align(parser: ArgumentParser | None = None) -> ArgumentPars
         parser = ArgumentParser(**KWARGS)
 
     # path args
-    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS sequence (aligned or unaligned)")
-    parser.add_argument("-o", "--out", type=Path, metavar="path", required=True, help="out prefix; parent dirs created if necessary [{input}]")
+    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS (aligned or unaligned)")
+    parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
     # others
     parser.add_argument("-m", "--max-refine-iter", type=int, metavar="int", default=-1, help="max refinement iterations during optimizing [default -1 = no limit]")
     parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")

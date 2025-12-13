@@ -48,7 +48,7 @@ KWARGS = dict(
         $ twig macse-prep -i CDS -o OUT -s '^sppA.*'
 
         # run parallel jobs on many cds files
-        $ parallel -j 10 'twig macse-prep -i {} -o OUT -p {/.}' ::: CDS/*.fa
+        $ parallel -j 10 'twig macse-prep -i {} -o {} ::: CDS/*.fa
     """)
 )
 
@@ -65,8 +65,8 @@ def get_parser_macse_prep(parser: ArgumentParser | None = None) -> ArgumentParse
         parser = ArgumentParser(**KWARGS)
 
     # path args
-    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS sequence (aligned or unaligned)")
-    parser.add_argument("-o", "--out", type=Path, metavar="path", required=True, help="out prefix; parent dirs created if necessary [{input}]")
+    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS (aligned or unaligned)")
+    parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
     parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds filename is used")
     parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
     parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")

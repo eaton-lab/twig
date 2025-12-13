@@ -77,7 +77,7 @@ def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
     parser.add_argument("-F", "--foreground-table", action="store_true", help="foreground file is a table (fg_format=2)")
 
     # others
-    parser.add_argument("-e", "--env", type=Path, metavar="path", help="conda env name where 'csubst' in installed [csubst]")
+    parser.add_argument("-e", "--env", type=Path, metavar="path", default="csubst", help="conda env name where 'csubst' in installed [csubst]")
     parser.add_argument("-j", "--threads", type=int, metavar="int", default=1, help="number of threads")
     parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
     parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
@@ -96,7 +96,7 @@ def run_csubst(args):
 
     # check that macse is in PATH
     if not Path(BIN_CSUBST).exists():
-        logger.error(INSTALL_MSG)
+        logger.error(INSTALL_MSG.format(args.env))
         sys.exit(1)
 
     # ensure outdir exists

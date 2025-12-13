@@ -6,72 +6,13 @@
 
 import subprocess
 import sys
-import textwrap
 from pathlib import Path
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from loguru import logger
 # from twig.utils.parallel import run_pipeline  # , run_with_pool
 from twig.utils.logger_setup import set_log_level
 
 BIN = Path(sys.prefix) / "bin"
 BIN_MACSE = str(BIN / "macse")
-ISOFORM_REGEX_DEFAULT = r"^([^|]+)\|.*?__(.+?)_i\d+"
-# group 1 (shared part up until |)
-# group 2 (after __ and up until first _i)
-
-
-KWARGS = dict(
-    prog="macse-align",
-    usage="macse-align -i CDS -o OUTDIR [options]",
-    help="run macse alignment (CDS/AA)",
-    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
-    description=textwrap.dedent("""
-        -------------------------------------------------------------------
-        | macse-align: ...
-        -------------------------------------------------------------------
-        | Macse ...
-        | This implements `macse -prog AlignSequences` and
-        | additional steps to ...
-        -------------------------------------------------------------------
-    """),
-    epilog=textwrap.dedent("""
-        Examples
-        --------
-        $ twig macse-align -i CDS -o /OUT/PRE
-
-        # run parallel jobs on many cds files
-        $ parallel -j 10 "twig macse-align -i {} ..." ::: CDS/*.nt.fa
-
-        # full pipeline
-        $ twig macse-prep -i CDS                     # {CDS}.nt.fa, ...
-        $ twig macse-align -i CDS.nt.fa -o CDS       # {CDS}.msa.nt.fa, ...
-        $ twig macse-refine -i CDS.msa.nt.fa -o CDS  # {CDS}.msa.refined.nt.fa, ...
-    """)
-)
-
-
-def get_parser_macse_align(parser: ArgumentParser | None = None) -> ArgumentParser:
-    """Return a parser for relabel tool.
-    """
-    # create parser or connect as subparser to cli parser
-    if parser:
-        KWARGS['name'] = KWARGS.pop("prog")
-        parser = parser.add_parser(**KWARGS)
-    else:
-        KWARGS.pop("help")
-        parser = ArgumentParser(**KWARGS)
-
-    # path args
-    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS (aligned or unaligned)")
-    parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
-    # others
-    parser.add_argument("-m", "--max-refine-iter", type=int, metavar="int", default=-1, help="max refinement iterations during optimizing [default -1 = no limit]")
-    parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
-    parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
-    # parser.add_argument("-k", "--keep", action="store_true", help="keep tmp files (for debugging)")
-    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
-    # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
-    return parser
 
 
 def run_macse_align(args):
@@ -121,6 +62,7 @@ def call_macse_align(cds_fasta: Path, outdir: Path, prefix: str, max_iter: int, 
 
 
 def main():
+    from ..cli.subcommands import get_parser_macse_align
     parser = get_parser_macse_align()
     args = parser.parse_args()
     run_macse_align(args)

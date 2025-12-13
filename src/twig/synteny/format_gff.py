@@ -65,103 +65,11 @@ Chr1     .      gene     600    900     .        +      0     ID={prefix}s1g2
 import re
 import sys
 import difflib
-import textwrap
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
 import pandas as pd
 import numpy as np
 from pandas.api.types import CategoricalDtype
 from loguru import logger
-
-
-KWARGS = dict(
-    prog="format-gff",
-    # usage="%(prog)s fasta [options]",
-    usage="twig format-gff GFF [options]",
-    help="format gff to filter and relabel genes and scaffolds",
-    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),    
-    description=textwrap.dedent("""
-        -------------------------------------------------------------------
-        | format-gff: filter/relabel genome annotation table              |
-        -------------------------------------------------------------------
-        | This tool is used to ...
-        -------------------------------------------------------------------
-    """),
-    epilog=textwrap.dedent(r"""
-        Examples
-        --------
-        # select a subset of scaffolds by name
-        $ format-gff GFF --subset-names Chr1 > Chr1.gff
-
-        # sort scaffolds by length and select first 10
-        $ format-gff GFF --sort-len --subset 10 > Chr1-10.gff
-
-        # relabel sorted scaffold names using str subst, save map of old names to new
-        $ format-gff GFF --sort-len --relabel {idx}_Chr{sidx}.{gidx} --relabel-map scaff-map.tsv > relabeled.gff
-
-        # filter to include only gene features
-        $ format-gff GFF --features gene > genes.gff
-
-        # subset to genes on Chr1, keep only ID attrs, and relabel IDs with spp prefix
-        $ format-gff GFF --subset-names Chr1 --feat gene --attrs ID --relabel-ids spp_{id} > relabeled.gff
-
-        # export GFF data to bed format and remove overlapping/duplicate features
-        $ format-gff GFF --subset-names Chr1 --feat mRNA --to bed --filter-duplicates > Chr1-transcripts.bed
-
-        # get all sequence IDs of mRNAs on Chr1
-        $ format-gff GFF --subset-names Chr1 --feat mRNA --attrs ID --to ids > Chr1-ids.txt
-    """)
-)
-
-
-def get_parser_format_gff(parser: ArgumentParser | None = None) -> ArgumentParser:
-    """Return a parser for format-gff tool.
-    """
-    # create parser or connect as subparser to cli parser
-    if parser:
-        KWARGS['name'] = KWARGS.pop("prog")
-        parser = parser.add_parser(**KWARGS)
-    else:
-        KWARGS.pop("help")
-        parser = ArgumentParser(**KWARGS)
-
-    # add arguments
-    parser.add_argument("GFF", type=Path, help="a gff/gtf annotation table (can be .gz)")
-
-    sort_options = parser.add_mutually_exclusive_group()
-    sort_options.add_argument("--sort-alpha", action="store_true", help="sort scaffolds by name alphanumerically")
-    sort_options.add_argument("--sort-len", action="store_true", help="sort scaffolds by length (longest to shortest)")
-
-    # relabel scaffolds. If you relabel in GFF you need to relabel same way in FA file using format-fasta --relabel-map MAP
-    relabel_options = parser.add_mutually_exclusive_group()
-    relabel_options.add_argument("--relabel", type=str, metavar="str", default="", help=r"relabel scaffs using str subst w/ {scaff},{sidx}. Applies after sorting/subset")
-    relabel_options.add_argument("--relabel-names", type=str, metavar="str", default="", help=r"relabel scaffs with list of new names. Applies after sorting/subset")
-    relabel_options.add_argument("--relabel-map", type=str, metavar="str", default="", help=r"optional path to write tsv mapping old scaff names to new")    
-
-    # select a subset of scaffolds
-    sub_options = parser.add_mutually_exclusive_group()
-    sub_options.add_argument("--subset", type=int, metavar="int", default=None, help="subselect the first N scaffolds. Applies after sorting")
-    sub_options.add_argument("--subset-idx", type=int, metavar="int", nargs="+", help="subselect one or more scaffolds by 1-based index. Applies after sorting")
-    sub_options.add_argument("--subset-names", type=str, metavar="str", nargs="+", help="subselect one or more scaffolds by name. Applies before relabeling/sorting")
-
-    parser.add_argument("--features", type=str, metavar="str", nargs="+", help="subselect one or more features (e.g., gene) to keep (default=all)")
-    parser.add_argument("--attrs", type=str, metavar="str", nargs="+", help="subselect one or more attributes (e.g., ID) to keep (default=all)")
-
-    # relabel IDs. If you relabel in GFF you need to relabel same way in PEP, CDS files using format-fasta --relabel-map MAP
-    parser.add_argument("--relabel-ids", type=str, metavar="str", default="", help=r"relabel attr IDs using str subst w/ {scaff},{sidx},{gidx},{idx},{type}")
-    parser.add_argument("--relabel-ids-map", type=str, metavar="str", default="", help=r"optional path to write tsv mapping old IDS to new")
-
-    parser.add_argument("--exclude-comments", action="store_true", help="exclude comments from the output")
-    parser.add_argument("--add-to-comments", action="store_true", help="add this cmd to comments section")
-    parser.add_argument("--filter-duplicates", action="store_true", help="keep only the highest score, or first, of duplicates coordinate features")
-
-    parser.add_argument("--to", type=str, metavar="{gff, bed, ids}", default="gff", help="output format (default=gff)")
-    # export_options.add_argument("--to-gff2", action="store_true", help="write BED format selected features")
-    # export_options.add_argument("--to-gff3", action="store_true", help="write BED format selected features")
-    # export_options.add_argument("--to-gtf", action="store_true", help="write BED format selected features")
-
-    parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "EXCEPTION"], metavar="level", default="INFO", help="stderr logging level (DEBUG, INFO, WARNING, ERROR; default=INFO)")
-    return parser
 
 
 def fuzzy_choice_match(value: str, choices: list[str]) -> str:

@@ -5,88 +5,12 @@
 ...
 """
 
-from typing import List
+# from typing import List
 import sys
-import textwrap
-from pathlib import Path
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+# from pathlib import Path
 from loguru import logger
 import toytree
 from twig.utils.logger_setup import set_log_level
-
-
-KWARGS = dict(
-    prog="tree-rooter",
-    usage="tree-rooter [options]",
-    help="Re-root gene trees by outgroup, species tree, and/or MAD",
-    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=140, max_help_position=140),
-    description=textwrap.dedent("""
-        -------------------------------------------------------------------
-        | tree-rooter: ...
-        -------------------------------------------------------------------
-        | Root trees by designating an outgroup, or a set of potential
-        | outgroups in the case that a set of trees may or may not include
-        | a single outgroup. The ...
-        -------------------------------------------------------------------
-    """),
-    epilog=textwrap.dedent("""
-        Examples
-        --------
-        # root trees given ordered options of outgroup clades
-        $ twig tree-rooter -t NWK -r A > rooted-trees.nwk
-        $ twig tree-rooter -t NWK -r A B A,B > rooted-trees.nwk
-
-        # root trees using minimal ancestor deviation (MAD)
-        $ twig tree-rooter -t NWK --mad > rooted-trees.nwk
-
-        # root trees on outgroups if present and mad root the rest
-        $ twig tree-rooter -t NWK -r A B --mad > rooted-trees.nwk
-
-        # root trees on outgroups in order of a rooted species tree
-        $ twig tree-rooter -t NWK -s SPTREE > rooted-trees.nwk
-
-        # root trees on a restricted set of outgroups from a rooted species tree
-        $ twig tree-rooter -t NWK -s SPTREE -r Z Y > rooted-trees.nwk
-
-        # return trees that could not be rooted given the options
-        $ twig tree-rooter -t NWK -s SPTREE -x > unrooted-trees.nwk
-    """)
-)
-
-
-def get_parser_tree_rooter(parser: ArgumentParser | None = None) -> ArgumentParser:
-    """Return a parser for relabel tool.
-    """
-    # create parser or connect as subparser to cli parser
-    if parser:
-        KWARGS['name'] = KWARGS.pop("prog")
-        parser = parser.add_parser(**KWARGS)
-    else:
-        KWARGS.pop("help")
-        parser = ArgumentParser(**KWARGS)
-
-    # path i/o args
-    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="newick or multi-newick trees file")
-    parser.add_argument("-o", "--out", type=Path, metavar="path", help="outfile name else printed to stdout")
-
-    # parsing names
-    parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip labels")
-    parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
-    parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
-
-    # rooting options
-    parser.add_argument("-s", "--sptree", type=Path, metavar="path", help="rooted species tree")
-    parser.add_argument("-r", "--outgroups", type=str, metavar="str", nargs="+", help="list outgroup tip labels")
-    parser.add_argument("-I", "--imap", type=Path, metavar="path", help="get outgroup assignment from tabular imap file listing 'sample\tpopulation'")
-
-    # return option
-    parser.add_argument("-m", "--mad", action="store_true", help="use minimal ancestor deviation to estimate root of remaining unrooted trees")
-    parser.add_argument("-x", "--not-rooted", action="store_true", help="return the trees that could not be rooted given the options")
-    parser.add_argument("-rd", "--relabel-delim", action="store_true", help="relabel tips by their delim parsed names")
-    # logging
-    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="CRITICAL", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
-    # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")    
-    return parser
 
 
 def get_rooting_clades(sptree, outgroups):

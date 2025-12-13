@@ -17,90 +17,9 @@ to a prefix path.
 
 import sys
 import gzip
-import textwrap
 from io import StringIO
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
 from loguru import logger
-
-
-KWARGS = dict(
-    prog="format-fasta",
-    usage="twig format-fasta FASTA [options]",
-    help="format fasta to sort/filter/subset/relabel/modify sequences",
-    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
-    description=textwrap.dedent("""
-        -------------------------------------------------------------------
-        | format-fasta: sort/filter/subset/relabel/modify headers or seqs |
-        -------------------------------------------------------------------
-        | This tool is used to modify a fasta file by performing one or   |
-        | more of the following operations in order: (1) sorting; (2)     |
-        | filtering; (3) sub-selecting; (4) relabeling; and (5) modifying |
-        | headers and sequences. A modified fasta is written to STDOUT.   |
-        | A subset of sequences/scaffolds can be returned in any order    |
-        | with --subset-idx or --subset-names but note that --sort-alpha  |
-        | or --sort-len override the ordering. This tool can be useful    |
-        | for modifying genome fasta files or CDS or PEP sequence files.  |
-        -------------------------------------------------------------------
-    """),
-    epilog=textwrap.dedent("""
-        Examples
-        --------
-        # operations on genome scaffolds
-        $ twig format-fasta GENOME --subset 3 --relabel-list A B C > genome.fa
-        $ twig format-fasta GENOME --subset-idx {0..3} --relabel-prefix-idx A_ > subgenomeA.fa
-        $ twig format-fasta GENOME --subset-names Chr1 Chr2 --relabel-list chromosome_1 chromosome_2 > genome.fa
-        $ twig format-fasta GENOME --sort-len --subset 8 --max-width 80 > chromosomes.fa
-
-        # operations on sequences (e.g., cds, pep)
-        $ twig format-fasta FA --relabel-prefix-idx spp --map NAME.map.tsv > NAME.fa
-        $ twig format-fasta FA --sort-len --min-len 200 --subset 50 > NAME.fa
-        $ twig format-fasta FA --max-width 80 --unmask > NAME.fa
-
-        # complex operations: select sequences from a subset of scaffolds
-        $ ids=$(twig format-gff GFF --subset-names Chr1 --feat mRNA --export-ids)
-        $ twig format-fasta FA --subset-names $ids > Chr1.pep.fa
-    """)
-)
-
-
-def get_parser_format_fasta(parser: ArgumentParser | None = None) -> ArgumentParser:
-    """Return a parser for format-fasta tool.
-    """
-    # create parser or connect as subparser to cli parser
-    if parser:
-        KWARGS['name'] = KWARGS.pop("prog")
-        parser = parser.add_parser(**KWARGS)
-    else:
-        KWARGS.pop("help")
-        parser = ArgumentParser(**KWARGS)
-
-    # add arguments
-    parser.add_argument("fasta", type=Path, help="a fasta sequence file (can be .gz)")
-
-    sort_options = parser.add_mutually_exclusive_group()
-    sort_options.add_argument("--sort-alpha", action="store_true", help="sort chromosomes by name alphanumerically")
-    sort_options.add_argument("--sort-len", action="store_true", help="sort chromosomes by length (longest to shortest)")
-
-    relabel_options = parser.add_mutually_exclusive_group()
-    relabel_options.add_argument("--relabel-prefix", type=str, metavar="str", default="", help="append prefix label to start of existing labels [%(default)s]")
-    relabel_options.add_argument("--relabel-prefix-idx", type=str, metavar="str", default="", help="overwrite labels with {{prefix}}{{counter}} using incrementing counter [%(default)s]")
-    relabel_options.add_argument("--relabel-list", type=str, metavar="str", nargs="+", help="overwrite labels with new labels provided as a list [%(default)s]")
-    parser.add_argument("--map", type=Path, metavar="Path", default=None, help="path to write optional relabel translation map (TSV format) [%(default)s]")
-
-    sub_options = parser.add_mutually_exclusive_group()
-    sub_options.add_argument("--subset", type=int, metavar="int", default=None, help="subselect the first N sequences after optional sorting")
-    sub_options.add_argument("--subset-idx", type=int, metavar="int", nargs="+", help="subselect one or more sequences by 1-based index after optional sorting")
-    sub_options.add_argument("--subset-names", type=str, metavar="str", nargs="+", help="subselect one or more sequences by name before optional relabeling")
-
-    parser.add_argument("--min-len", type=int, metavar="int", default=None, help="sequences shorter than this length are excluded (default=None)")
-    parser.add_argument("--max-width", type=int, metavar="int", default=None, help="write sequences with max width textwrapping (e.g., 80)")
-    parser.add_argument("--unmask", action="store_true", help="convert any soft-masked sequences to upper case")
-    parser.add_argument("--revcomp", action="store_true", help="reverse complement DNA sequences, or reverse AA sequences")
-
-    # compress?
-    parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "EXCEPTION"], metavar="level", default="INFO", help="stderr logging level (DEBUG, INFO, WARNING, ERROR; default=INFO)")
-    return parser
 
 
 def get_headers_to_seqs_dict_subset(genome: Path, min_len: int, subset: int, subset_idx: list[int], subset_names: list[str]) -> dict[str, str]:
@@ -354,6 +273,7 @@ def run_format_fasta(args):
 
 def main():
     """module-level main cli"""
+    from ..cli.subcommands import get_parser_format_fasta
     parser = get_parser_format_fasta()
     args = parser.parse_args()
     # allow graceful exit if output is piped but pipe is broken

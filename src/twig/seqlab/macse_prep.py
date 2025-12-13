@@ -7,97 +7,15 @@
 from typing import List
 import re
 import sys
-import textwrap
 import subprocess
 from collections import defaultdict
 from pathlib import Path
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from loguru import logger
 import pandas as pd
-# from twig.utils.parallel import run_pipeline  # , run_with_pool
 from twig.utils.logger_setup import set_log_level
 
 BIN = Path(sys.prefix) / "bin"
 BIN_MACSE = str(BIN / "macse")
-ISOFORM_REGEX_DEFAULT = r"^([^|]+)\|.*?__(.+?)_i\d+"
-# group 1 (shared part up until |)
-# group 2 (after __ and up until first _i)
-
-
-KWARGS = dict(
-    prog="macse-prep",
-    usage="macse-prep -i CDS -o OUTDIR [options]",
-    help="prepare CDS for macse alignment (trim,filter,iso-collapse)",
-    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
-    description=textwrap.dedent("""
-        -------------------------------------------------------------------
-        | macse-prep: prepare CDS for alignment (trim, filter, iso-collapse)
-        -------------------------------------------------------------------
-        | Macse ...
-        | This implements `macse -prog trimNonHomologousFragments` and
-        | additional steps to ...
-        -------------------------------------------------------------------
-    """),
-    epilog=textwrap.dedent("""
-        Examples
-        --------
-        $ twig macse-prep -i CDS -o OUT/PRE
-        $ twig macse-prep -i CDS -mh 0.1 -mi 0.5 -ti 50 -te 50 -mc 15 -c 20
-        $ twig macse-prep -i CDS -mh 0.3 -mi 0.8 -ti 25 -te 25 -mc 15 -c 20
-        $ twig macse-prep -i CDS -mh 0.5 -mc 10 -k -xa -ml 200 -e '^sppA.*'
-        $ twig macse-prep -i CDS -s '^sppA.*'
-
-        # run parallel jobs on many cds files
-        $ parallel -j 10 "twig macse-prep -i {} ..."  ::: CDS/*.fa
-
-        # full pipeline
-        $ twig macse-prep -i CDS                     # {CDS}.nt.fa, ...
-        $ twig macse-align -i CDS.nt.fa -o CDS       # {CDS}.msa.nt.fa, ...
-        $ twig macse-refine -i CDS.msa.nt.fa -o CDS  # {CDS}.msa.refined.nt.fa, ...
-    """)
-)
-
-
-def get_parser_macse_prep(parser: ArgumentParser | None = None) -> ArgumentParser:
-    """Return a parser for relabel tool.
-    """
-    # create parser or connect as subparser to cli parser
-    if parser:
-        KWARGS['name'] = KWARGS.pop("prog")
-        parser = parser.add_parser(**KWARGS)
-    else:
-        KWARGS.pop("help")
-        parser = ArgumentParser(**KWARGS)
-
-    # path args
-    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS (aligned or unaligned)")
-    parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
-    parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
-    parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")
-    # options
-    parser.add_argument("-ml", "--min-length", type=int, metavar="int", default=0, help="min nt sequence length after trimming [%(default)s]")
-    parser.add_argument("-hf", "--min-homology-full", type=float, metavar="float", default=0.1, help="min homology required w/ >=mc others across full sequence [%(default)s]")
-    parser.add_argument("-hi", "--min-homology-internal", type=float, metavar="float", default=0.5, help="min homology required w/ >=mc others in the internal sequence [%(default)s]")
-    parser.add_argument("-hc", "--min-homology-coverage", type=int, metavar="int", default=3, help="min samples a seq must share homology with at >= mh and mi [%(default)s]")
-    parser.add_argument("-ti", "--min-trim-length-homology-internal", type=int, metavar="int", default=50, help="trim fragments w/ len <ti and homology <mi w/ <mc sequences [%(default)s]")
-    parser.add_argument("-te", "--min-trim-length-homology-external", type=int, metavar="int", default=50, help="trim fragments w/ len <tx and homology <mh w/ <mc sequences [%(default)s]")
-    parser.add_argument("-mm", "--mem-length", type=int, metavar="int", default=6, help="homology is the prop of aa Maximum Exact Matches of this length [%(default)s]")
-    parser.add_argument("-is", "--isoform-regex", type=re.compile, metavar="str", default=ISOFORM_REGEX_DEFAULT, help="regex used to group isoform sequences ['%(default)s']")
-    # parser.add_argument("-ac", "--aln-trim-ends-min-coverage", type=float, metavar="float", default=0.4, help="trim alignment edges to where a min percent of samples have data [%(default)s]")
-    # parser.add_argument("-as", "--aln-trim-window-size", type=int, metavar="int", default=5, help="trim alignment using a sliding 'half_window_size' defined as ... [%(default)s]")
-    # parser.add_argument("-xa", "--skip-alignment", action="store_true", help="skip alignment step and only trim/filter sequences")
-
-    # choose one or more
-    # parser.add_argument("-xt", "--skip-trim-and-filter", action="store_true", help="skip trim and filter step")
-    parser.add_argument("-xi", "--skip-isoform-collapse", action="store_true", help="skip isoform collapse step")
-
-    # others
-    parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
-    parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
-    parser.add_argument("-k", "--keep", action="store_true", help="keep tmp files (for debugging)")
-    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
-    # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
-    return parser
 
 
 def call_macse_trim_non_homologous_fragments(

@@ -8,9 +8,7 @@ conda install csubst 'iqtree<3' -c bioconda
 
 import subprocess
 import sys
-from textwrap import dedent
 from pathlib import Path
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from loguru import logger
 from twig.utils.logger_setup import set_log_level
 
@@ -27,63 +25,6 @@ $ conda create -n csubst csubst 'iqtree<3' Python=3.10 --strict-channel -c conda
 $ twig csubst -a MSA -t NWK -g FG -o OUT/PRE -e csubst
 
 """
-
-KWARGS = dict(
-    prog="csubst",
-    usage="twig csubst -i MSA -t TREE -g FG [options]",
-    help="run csubst in wrapper",
-    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
-    description=dedent("""
-        -------------------------------------------------------------------
-        |
-        -------------------------------------------------------------------
-        |
-        |
-        |
-        -------------------------------------------------------------------
-    """),
-    epilog=dedent("""
-        Examples
-        --------
-        $ twig csubst -a MSA -t NWK -g FG -o OUT/PRE   # OUT/PRE.cb...
-
-        $ twig csubst -a MSA -t NWK -g FG -o OUT/PRE   # OUT/PRE.cb...
-    """)
-)
-
-
-def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
-    """Return a parser for relabel tool.
-    """
-    # create parser or connect as subparser to cli parser
-    if parser:
-        KWARGS['name'] = KWARGS.pop("prog")
-        parser = parser.add_parser(**KWARGS)
-    else:
-        KWARGS.pop("help")
-        parser = ArgumentParser(**KWARGS)
-
-    # path args
-    parser.add_argument("-a", "--alignment", type=Path, metavar="path", required=True, help="input CDS alignment")
-    parser.add_argument("-t", "--tree", type=Path, metavar="path", required=True, help="input rooted tree file")
-    parser.add_argument("-g", "--foreground", type=Path, metavar="path", help="foreground file")
-    # parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
-    parser.add_argument("-o", "--outdir", type=Path, metavar="path", help="output directory. Created if it doesn't exist")
-    parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds filename is used")
-
-    parser.add_argument("-m", "--max-arity", type=int, metavar="int", default=2, help="max combinatorial number of branches (K)")
-    parser.add_argument("-u", "--exhaustive-until", type=int, metavar="int", default=1, help="perform exhaustive (non-heuristic) search up N branch combs")
-    parser.add_argument("-c", "--cutoff-stat", type=str, metavar="str", default="OCNany2spe,2.0|omegaCany2spe,5.0", help="Cutoff stats for searching higher-order branch combs [%(default)s]")
-    parser.add_argument("-F", "--foreground-table", action="store_true", help="foreground file is a table (fg_format=2)")
-
-    # others
-    parser.add_argument("-e", "--env", type=Path, metavar="path", default="csubst", help="conda env name where 'csubst' in installed [csubst]")
-    parser.add_argument("-j", "--threads", type=int, metavar="int", default=1, help="number of threads")
-    parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
-    parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
-    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
-    # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
-    return parser
 
 
 def run_csubst(args):
@@ -163,6 +104,7 @@ def call_csubst(args):
 
 
 def main():
+    from ..cli.subcommands import get_parser_csubst
     parser = get_parser_csubst()
     args = parser.parse_args()
     run_csubst(args)

@@ -15,127 +15,11 @@ Work over a generator of trees
 """
 
 import sys
-import textwrap
-from pathlib import Path
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+# from pathlib import Path
 from loguru import logger
 import numpy as np
 import toytree
 from twig.utils.logger_setup import set_log_level
-
-
-KWARGS = dict(
-    prog="tree-filter",
-    usage="tree-filter [options]",
-    help="filter and relabel a set of trees for downstream analyses",
-    formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=140, max_help_position=140),
-    description=textwrap.dedent("""
-        -------------------------------------------------------------------
-        | tree-filter: Filter/Relabel a set of trees for downstream analyses
-        -------------------------------------------------------------------
-        | The order of [optional] operations is (1) parse names from delim
-        | split tip labels; (2) subsample and/or relabel names by imap;
-        | (3) exclude outlier edges; (4) collapse outgroups; (5) exclude
-        | trees w/ < min-tips; (6) exclude trees w/ > min-copies in any name.
-        | Note that if names are parsed by delim, then the imap should contain
-        | the parsed names. The labels on output trees will be the same as in
-        | the inputs unless --relabel-delim or --relabel-imap is used. But
-        | parsing shorter names can be useful to match names to imap even
-        | if keeping full names. Filtering stats are written to stderr, which
-        | can be redirected to a log file with `2> log.txt`.
-        -------------------------------------------------------------------
-    """),
-    epilog=textwrap.dedent("""
-        Examples
-        --------
-        # relabel by split-select-join on tip names
-        $ twig tree-filter -i NWK -d '-' -di 0 2 -dj '-rd' > relabeled-trees.nwk
-
-        # get only single-copy gene trees
-        $ twig tree-filter -i NWK -c 1 > single-copy-trees.nwk
-
-        # get only trees w/ >20 tips
-        $ twig tree-filter -i NWK -m 20 > min20-trees.nwk
-
-        # exclude outlier edges
-        $ twig tree-filter -i NWK --exclude -ei 4 > cleaned-trees.nwk
-
-        Example IMAP
-        -------------
-        sampleA     pop1
-        sampleB     pop1
-        sampleC     pop2
-        sampleD     pop2
-        sampleE     outgroup
-        sampleF     outgroup
-
-        Example MINMAP
-        --------------
-        pop1        1
-        pop2        1
-        outgroup    1
-
-        Examples using IMAP/MINMAP
-        --------------------------
-        # subsample to names in imap
-        $ twig tree-filter -i NWK -I IMAP > subsample-trees.nwk
-
-        # subsample and relabel to pop names in imap
-        $ twig tree-filter -i NWK -I IMAP -ri > relabeled-trees.nwk
-
-        # subsample, relabel, and keep only one outgroup (best to root before)
-        $ twig tree-filter -i NWK -I IMAP -ri --collapse > final-trees.nwk
-
-        Example on a many trees in different paths
-        -------------------------------------------
-        $ parallel "twig tree-filter -i {} ... > {}.filtered" ::: TREES/*.nwk
-    """)
-)
-
-
-def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentParser:
-    """Return a parser for relabel tool.
-    """
-    # create parser or connect as subparser to cli parser
-    if parser:
-        KWARGS['name'] = KWARGS.pop("prog")
-        parser = parser.add_parser(**KWARGS)
-    else:
-        KWARGS.pop("help")
-        parser = ArgumentParser(**KWARGS)
-
-    # path i/o args
-    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="newick or multi-newick trees file")
-    parser.add_argument("-o", "--out", type=Path, metavar="path", help="outfile name else printed to stdout")
-
-    # parsing names
-    parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip labels")
-    parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
-    parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
-
-    # filter on names
-    # parser.add_argument("-i", "--include", type=str, metavar="str", nargs="+", help="subset of names to keep")
-    parser.add_argument("-I", "--imap", type=Path, metavar="path", help=r"filepath listing names to keep, or assigning (name population)")
-    parser.add_argument("-M", "--minmap", type=Path, metavar="path", help=r"filepath listing (population mincov) for filters")
-
-    # filter on tree data
-    parser.add_argument("-m", "--min-tips", type=int, metavar="int", default=4, help="min tips after pruning [4]")
-    parser.add_argument("-c", "--max-copies", type=int, metavar="int", help="filter trees with >c gene copies from a taxon [None]")
-    parser.add_argument("-eo", "--edge-outlier-outgroup", type=float, metavar="float", default=10, help="exclude 'outgroup' population edges if >eo stdev from mean [10]")
-    parser.add_argument("-ei", "--edge-outlier-ingroup", type=float, metavar="float", default=5, help="exclude non 'outgroup' population edges if >ei stdev from mean [5]")
-
-    # actions
-    parser.add_argument("-rd", "--relabel-delim", action="store_true", help="relabel tips by their delim parsed names")
-    parser.add_argument("-ri", "--relabel-imap", action="store_true", help="relabel tips to their imap mapped names")
-    # parser.add_argument("-x", "--nexus", action="store_true", help="export in NEXUS format. Retains path/tree names")
-    parser.add_argument("--subsample", action="store_true", help="subsample to include only tips in imap")
-    parser.add_argument("--exclude-outliers", action="store_true", help="exclude tips with outlier edge lengths (>ei or >eo)")
-    parser.add_argument("--require-outgroups", action="store_true", help="require at least one 'outgroup' sample")
-    parser.add_argument("--collapse-outgroups", action="store_true", help="keep only the most distant 'outgroup' (assumes rooted trees)")
-
-    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
-    # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
-    return parser
 
 
 def set_delim_and_imap_labels(tree, delim, idxs, join, imap):
@@ -332,6 +216,7 @@ def run_tree_filter(args):
 
 
 def main():
+    from ..cli.subcommands import get_parser_tree_filter
     parser = get_parser_tree_filter()
     args = parser.parse_args()
     run_tree_filter(args)

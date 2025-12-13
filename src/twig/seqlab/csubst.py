@@ -91,7 +91,9 @@ def run_csubst(args):
     set_log_level(args.log_level)
 
     BIN = Path(sys.prefix).parent / f"{args.env}" / "bin"
+    global BIN_CSUBST
     BIN_CSUBST = str(BIN / "csubst")
+
     # BIN_IQTREE = str(BIN / "iqtree")
 
     # check that macse is in PATH

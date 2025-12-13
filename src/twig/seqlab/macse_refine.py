@@ -74,8 +74,9 @@ def get_parser_macse_refine(parser: ArgumentParser | None = None) -> ArgumentPar
 
     # path args
     parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS alignment")
-    parser.add_argument("-o", "--outdir", type=Path, metavar="path", default='.', help="output directory, created if it doesn't exist [.]")
-    parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds basename is used")
+    parser.add_argument("-o", "--out", type=Path, metavar="path", required=True, help="out prefix; parent dirs created if necessary [{input}]")
+    # parser.add_argument("-o", "--outdir", type=Path, metavar="path", default='.', help="output directory, created if it doesn't exist [.]")
+    # parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds basename is used")
     parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
     parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")
     parser.add_argument("-t", "--tree", type=Path, metavar="path", help="optional newick file to subsample genes present in tree")
@@ -87,6 +88,7 @@ def get_parser_macse_refine(parser: ArgumentParser | None = None) -> ArgumentPar
     parser.add_argument("-ef", "--codon-ext-fs", type=str, metavar="str", default="NNN", help="codon to sub for external frame shift [NNN]")
     parser.add_argument("-fs", "--codon-final-stop", type=str, metavar="str", default="NNN", help="codon to sub for final stop [NNN]")
     parser.add_argument("-is", "--codon-int-stop", type=str, metavar="str", default="NNN", help="codon to sub for internal stop [NNN]")
+
     parser.add_argument("-r", "--refine-alignment", action="store_true", help="refine alignment")
     parser.add_argument("-R", "--refine-alignment-if", action="store_true", help="refine alignment only if >=1 sequences are filtered out")
     parser.add_argument("-ri", "--max-iter-refine-alignment", type=int, metavar="int", default=-1, help="max iterations in refine alignment [%(default)s]")
@@ -100,13 +102,15 @@ def get_parser_macse_refine(parser: ArgumentParser | None = None) -> ArgumentPar
     return parser
 
 
-def filter_sequences(cds_fasta, outdir: Path, prefix: str, exclude: List[str], subsample: List[str], subsample_tree: Path, min_length: int, force: bool) -> None:
+def filter_sequences(cds_fasta: Path, outprefix: Path, exclude: List[str], subsample: List[str], subsample_tree: Path, min_length: int, force: bool) -> None:
     """Write fasta with only one isoform per gene. When multple are present
     the one with greatest homology to other sequences is retained, with
     ties broken by length, and then order.
     """
-    logger.info("filtering alignment")
-    out = outdir / (prefix + ".tmp.msa.nt.fa")
+    # logger.info("filtering alignment")
+    pre = cds_fasta.name
+    out = outprefix.with_suffix(outprefix.suffix + ".tmp.msa.nt.fa")
+
     # parse trimmed fasta file
     seqs = {}
     with open(cds_fasta, 'r') as datain:
@@ -149,7 +153,7 @@ def filter_sequences(cds_fasta, outdir: Path, prefix: str, exclude: List[str], s
 
         # exclude if user-excluded
         if name in matched:
-            logger.debug(f"[{prefix}] {name} excluded by user args")
+            logger.debug(f"[{pre}] {name} excluded by user args")
             f["user"] += 1
             continue
 
@@ -157,13 +161,13 @@ def filter_sequences(cds_fasta, outdir: Path, prefix: str, exclude: List[str], s
         seq = seqs[name]
         nbases = sum(1 for i in seq if i != "-")
         if nbases < min_length:
-            logger.debug(f"[{prefix}] {name} excluded by min_length ({len(seq)})")
+            logger.debug(f"[{pre}] {name} excluded by min_length ({len(seq)})")
             f["min_length"] += 1
             continue
         keep[name] = seq
 
     # report
-    logger.info(f"[{prefix}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")
+    logger.info(f"[{pre}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")
 
     # write output
     if sum(f.values()):
@@ -174,32 +178,30 @@ def filter_sequences(cds_fasta, outdir: Path, prefix: str, exclude: List[str], s
     return cds_fasta, False
 
 
-def call_macse_refine_alignment(data: Path, outdir: Path, prefix: str, force: bool, max_iter: int, verbose: bool):
+def call_macse_refine_alignment(data: Path, outprefix: str, force: bool, max_iter: int, verbose: bool):
     """Run Alignment step with default settings"""
     cmd = [
         BIN_MACSE, "-prog", "refineAlignment",
         "-align", str(data),
-        "-out_NT", f"{outdir}/{prefix}.rmsa.nt.fa",
-        "-out_AA", f"{outdir}/{prefix}.rmsa.aa.fa",
+        "-out_NT", f"{outprefix}.rmsa.nt.fa",
+        "-out_AA", f"{outprefix}.rmsa.aa.fa",
         "-max_refine_iter", str(max_iter),
     ]
     logger.info("refining alignment")
-    logger.debug(f"[{prefix}] " + " ".join(cmd))
+    logger.debug(f"[{data.name}] " + " ".join(cmd))
     if verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True)
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.stderr)
-    # (outdir / f"{prefix}.tmp.msa.aa.fa").unlink()
-    return outdir / f"{prefix}.rmsa.nt.fa"
+    return outprefix.with_suffix(outprefix.suffix + ".rmsa.nt.fa")
 
 
-def call_macse_trim_alignment(data: Path, outdir: Path, prefix: str, half_window_size: int, min_percent_at_ends: float, verbose: bool, force: bool):
+def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int, min_percent_at_ends: float, verbose: bool, force: bool):
     """..."""
-    dataout = outdir / f"{prefix}.tmp.msa.trimmed.nt.fa"
-    datainfo = outdir / f"{prefix}.msa.trimmed.info"
-
+    dataout = outprefix.with_suffix(outprefix.suffix + ".tmp.msa.trimmed.nt.fa")
+    datainfo = outprefix.with_suffix(outprefix.suffix + ".msa.trimmed.info")
     cmd = [
         BIN_MACSE, "-prog", "trimAlignment",
         "-align", str(data),
@@ -210,21 +212,20 @@ def call_macse_trim_alignment(data: Path, outdir: Path, prefix: str, half_window
         "-out_NT", str(dataout),
     ]
     logger.info("trimming alignment")
-    logger.debug(f"[{prefix}] " + " ".join(cmd))
+    logger.debug(f"[{data.name}] " + " ".join(cmd))
     if verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True)
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.stderr)
-    # (outdir / f"{prefix}.tmp.msa.aa.fa").unlink()
-    return outdir / f"{prefix}.tmp.msa.trimmed.nt.fa"
+    return dataout
 
 
-def call_macse_export_alignment(data: Path, outdir: Path, prefix: str, codon_efs, codon_ifs, codon_fst, codon_ist, verbose, force):
+def call_macse_export_alignment(data: Path, outprefix: str, codon_efs, codon_ifs, codon_fst, codon_ist, verbose, force):
     """..."""
-    out_nt = outdir / f"{prefix}.msa.refined.nt.fa"
-    out_aa = outdir / f"{prefix}.msa.refined.aa.fa"
+    out_nt = outprefix.with_suffix(".msa.refined.nt.fa")
+    out_aa = outprefix.with_suffix(".msa.refined.aa.fa")
     cmd = [
         BIN_MACSE, "-prog", "exportAlignment",
         "-align", str(data),
@@ -235,14 +236,14 @@ def call_macse_export_alignment(data: Path, outdir: Path, prefix: str, codon_efs
         "-out_NT", str(out_nt),
         "-out_AA", str(out_aa),
     ]
-    logger.debug(f"[{prefix}] " + " ".join(cmd))
+    logger.debug(f"[{outprefix.name}] " + " ".join(cmd))
     if verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True)
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.stderr)
-    return outdir / f"{prefix}.msa.refined.nt.fa"
+    return out_nt
 
 
 def run_macse_refine(args):
@@ -251,30 +252,33 @@ def run_macse_refine(args):
 
     # check that macse is in PATH
     assert Path(BIN_MACSE).exists(), f"macse binary not found. Checked: {BIN_MACSE}"
+    assert args.input.exists() and args.input.is_file(), f"{args.input} not found"
 
     # only one or the other allowed
     nargs = len([i for i in [args.exclude, args.subsample, args.tree] if i])
     if nargs > 1:
         raise ValueError("choose one of --exclude, --subample, or --tree")
 
-    # ensure outdir exists
-    args.outdir.mkdir(exist_ok=True)
-    args.prefix = args.prefix if args.prefix is not None else args.input.name
+    # ensure outpath and pdir exists
+    args.outprefix = args.out
+    if args.outprefix is None:
+        args.outprefix = args.input
+    args.outprefix.parent.mkdir(exist_ok=True)
 
     # bail out if final file exists
-    result = args.outdir / (args.prefix + ".final.nt.fa")
+    result = args.outprefix.with_suffix(args.outprefix.suffix + ".msa.refined.nt.fa")
     if result.exists() and not args.force:
-        logger.info(f"[{args.prefix}] [skipping] {result} already exists")
+        logger.warning(f"[{args.input.name}] [skipping] {result} already exists. Using --force to overwrite")
         return
 
     # filter by minimum length
-    data, filtered = filter_sequences(args.input, args.outdir, args.prefix, args.exclude, args.subsample, args.tree, args.min_length, args.force)
+    data, filtered = filter_sequences(args.input, args.outprefix, args.exclude, args.subsample, args.tree, args.min_length, args.force)
     if args.refine_alignment:
-        data = call_macse_refine_alignment(data, args.outdir, args.prefix, args.force, args.max_iter_refine_alignment, args.verbose)
+        data = call_macse_refine_alignment(data, args.outprefix, args.force, args.max_iter_refine_alignment, args.verbose)
     if args.refine_alignment_if and filtered:
-        data = call_macse_refine_alignment(data, args.outdir, args.prefix, args.force, args.max_iter_refine_alignment, args.verbose)
-    data = call_macse_trim_alignment(data, args.outdir, args.prefix, args.aln_trim_window_size, args.aln_trim_ends_min_coverage, args.verbose, args.force)
-    data = call_macse_export_alignment(data, args.outdir, args.prefix, args.codon_int_fs, args.codon_ext_fs, args.codon_final_stop, args.codon_int_stop, args.verbose, args.force)
+        data = call_macse_refine_alignment(data, args.outprefix, args.force, args.max_iter_refine_alignment, args.verbose)
+    data = call_macse_trim_alignment(data, args.outprefix, args.aln_trim_window_size, args.aln_trim_ends_min_coverage, args.verbose, args.force)
+    data = call_macse_export_alignment(data, args.outprefix, args.codon_int_fs, args.codon_ext_fs, args.codon_final_stop, args.codon_int_stop, args.verbose, args.force)
 
     # clean up tmp files
     suffices = [
@@ -284,10 +288,10 @@ def run_macse_refine(args):
     ]
     if not args.keep:
         for suffix in suffices:
-            path = args.outdir / f"{args.prefix}{suffix}"
+            path = args.outprefix.with_suffix(args.outprefix.suffix + suffix)
             if path.exists():
                 path.unlink()
-    logger.info(f"[{args.prefix}] alignment written to {data}")
+    logger.info(f"[{args.input.name}] alignment written to {data}")
 
 
 def main():

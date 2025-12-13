@@ -20,6 +20,7 @@ from ..synteny.format_gff import run_format_gff, get_parser_format_gff
 # from ..synteny.dot_draw import run_dot_draw, get_parser_dot_draw
 # from ..synteny.dot_coords import run_dot_coords, get_parser_dot_coords
 from ..seqlab.diamond_blastp import run_diamond_blastp, get_parser_diamond_blastp
+from ..seqlab.diamond_blast_all import run_diamond_blastp_all, get_parser_diamond_blastp_all
 from ..seqlab.macse_prep import run_macse_prep, get_parser_macse_prep
 from ..seqlab.macse_align import run_macse_align, get_parser_macse_align
 from ..seqlab.macse_refine import run_macse_refine, get_parser_macse_refine
@@ -82,7 +83,7 @@ def setup_parsers() -> ArgumentParser:
     # get_parser_dot_coords(subparsers)
     # get_parser_dot_draw(subparsers)
     get_parser_diamond_blastp(subparsers)
-    # get_parser_diamond_blastp-all(subparsers)    
+    get_parser_diamond_blastp_all(subparsers)
     # get_parser_lastal_align(subparsers)
     # get_parser_ortholog_graph(subparsers)
     # get_parser_ortholog_...(subparsers)    
@@ -114,7 +115,8 @@ def main(cmd: Optional[str] = None) -> int:
     dispatch = {
         # "dot-coords": run_dot_coords,
         # "dot-draw": run_dot_draw,
-        "diamond-blastp": run_diamond_blastp,
+        "diamond-bl": run_diamond_blastp,
+        "diamond-pw": run_diamond_blastp_all,
         # "format-data": run_format_data,
         "format-fasta": run_format_fasta,
         "format-gff": run_format_gff,

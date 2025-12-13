@@ -47,7 +47,7 @@ def get_parser_genome_table(parser: ArgumentParser | None = None) -> ArgumentPar
         prog="genome-table",
         usage="twig genome-table FA GFF [options]",
         help="write table with chrom/scaff [names lengths ngenes]",
-        formatter_class=lambda prog: argparse.RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),        
+        formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
         description=textwrap.dedent("""
             -------------------------------------------------------------------
             | genome-table: get table of chrom/scaff [names, lengths, ngenes] |

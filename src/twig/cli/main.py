@@ -15,8 +15,8 @@ from textwrap import dedent
 from loguru import logger
 from ..synteny.format_fasta import run_format_fasta, get_parser_format_fasta
 from ..synteny.format_gff import run_format_gff, get_parser_format_gff
+from ..synteny.genome_table import run_genome_table, get_parser_genome_table
 # from ..synteny.format_data import run_format_data, get_parser_format_data
-# from ..synteny.genome_table import run_genome_table, get_parser_genome_table
 # from ..synteny.dot_draw import run_dot_draw, get_parser_dot_draw
 # from ..synteny.dot_coords import run_dot_coords, get_parser_dot_coords
 from ..seqlab.diamond_bl import run_diamond_bl, get_parser_diamond_bl
@@ -76,10 +76,10 @@ def setup_parsers() -> ArgumentParser:
         help="-----------------------------------------------------",
     )
 
-    # get_parser_genome_table(subparsers)
-    # get_parser_format_data(subparsers)
+    get_parser_genome_table(subparsers)
     get_parser_format_fasta(subparsers)
     get_parser_format_gff(subparsers)
+    # get_parser_format_data(subparsers)
     # get_parser_dot_coords(subparsers)
     # get_parser_dot_draw(subparsers)
     get_parser_diamond_bl(subparsers)
@@ -117,10 +117,10 @@ def main(cmd: Optional[str] = None) -> int:
         # "dot-draw": run_dot_draw,
         "diamond-bl": run_diamond_bl,
         "diamond-pw": run_diamond_pw,
-        # "format-data": run_format_data,
         "format-fasta": run_format_fasta,
         "format-gff": run_format_gff,
-        # "genome-table": run_genome_table,
+        # "format-data": run_format_data,
+        "genome-table": run_genome_table,
         "macse-prep": run_macse_prep,
         "macse-align": run_macse_align,
         "macse-refine": run_macse_refine,

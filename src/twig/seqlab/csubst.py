@@ -49,7 +49,7 @@ def run_csubst(args):
     args.workdir = args.outdir
     if args.workdir.exists() and args.workdir.is_dir():
         if not args.force:
-            raise ValueError(f"path exists at {args.workdir}/{args.prefix}. Use --force to overwrite.")
+            raise ValueError(f"path exists at {args.workdir}/. Use --force to overwrite.")
         else:
             # check if it contains only csubst files
             for item in args.workdir.iterdir():
@@ -74,7 +74,7 @@ def run_csubst(args):
 
     # run it
     call_csubst(args)
-    logger.info(f"[{args.prefix}] csubst result written to {args.workdir}/")
+    logger.info(f"[{args.alignment}] csubst result written to {args.workdir}/")
 
 
 def call_csubst(args):

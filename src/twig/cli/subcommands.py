@@ -51,8 +51,8 @@ def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
     parser.add_argument("-t", "--tree", type=Path, metavar="path", required=True, help="input rooted tree file")
     parser.add_argument("-g", "--foreground", type=Path, metavar="path", help="foreground file")
     # parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
-    parser.add_argument("-o", "--outdir", type=Path, metavar="path", help="output directory. Created if it doesn't exist")
-    parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds filename is used")
+    parser.add_argument("-o", "--outdir", type=Path, metavar="path", default="./csubst", help="Out directory will be created at this path [%(default)s]")
+    # parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds filename is used")
 
     parser.add_argument("-m", "--max-arity", type=int, metavar="int", default=2, help="max combinatorial number of branches (K) [%(default)s]")
     parser.add_argument("-u", "--exhaustive-until", type=int, metavar="int", default=1, help="perform exhaustive (non-heuristic) search up N branch combs [%(default)s]")

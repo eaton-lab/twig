@@ -42,11 +42,11 @@ def run_csubst(args):
         sys.exit(1)
 
     # ensure outdir exists
-    args.outdir.mkdir(exist_ok=True)
-    args.prefix = args.prefix if args.prefix is not None else args.alignment.name
+    # args.outdir.mkdir(exist_ok=True)
+    # args.prefix = args.prefix if args.prefix is not None else args.alignment.name
 
     # check to create workdir
-    args.workdir = args.outdir / args.prefix
+    args.workdir = args.outdir
     if args.workdir.exists() and args.workdir.is_dir():
         if not args.force:
             raise ValueError(f"path exists at {args.workdir}/{args.prefix}. Use --force to overwrite.")

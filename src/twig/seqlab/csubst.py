@@ -74,7 +74,7 @@ def run_csubst(args):
 
     # run it
     call_csubst(args)
-    logger.info(f"[{args.alignment}] csubst result written to {args.workdir}/")
+    logger.info(f"[{args.alignment.name}] csubst result written to {args.workdir}/")
 
 
 def call_csubst(args):
@@ -93,7 +93,7 @@ def call_csubst(args):
         "--exhaustive_until", str(args.exhaustive_until),
         "--iqtree_exe", str(BIN_IQTREE),
     ]
-    logger.debug(f"[{args.alignment}] " + " ".join(cmd))
+    logger.debug(f"[{args.alignment.name}] " + " ".join(cmd))
     if args.verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True, cwd=args.workdir)
     else:

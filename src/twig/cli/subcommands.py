@@ -54,10 +54,13 @@ def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
     parser.add_argument("-o", "--outdir", type=Path, metavar="path", help="output directory. Created if it doesn't exist")
     parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds filename is used")
 
-    parser.add_argument("-m", "--max-arity", type=int, metavar="int", default=2, help="max combinatorial number of branches (K)")
-    parser.add_argument("-u", "--exhaustive-until", type=int, metavar="int", default=1, help="perform exhaustive (non-heuristic) search up N branch combs")
+    parser.add_argument("-m", "--max-arity", type=int, metavar="int", default=2, help="max combinatorial number of branches (K) [%(default)s]")
+    parser.add_argument("-u", "--exhaustive-until", type=int, metavar="int", default=1, help="perform exhaustive (non-heuristic) search up N branch combs [%(default)s]")
     parser.add_argument("-c", "--cutoff-stat", type=str, metavar="str", default="OCNany2spe,2.0|omegaCany2spe,5.0", help="Cutoff stats for searching higher-order branch combs [%(default)s]")
-    parser.add_argument("-F", "--foreground-table", action="store_true", help="foreground file is a table (fg_format=2)")
+
+    parser.add_argument("-b", "--foreground-table", action="store_true", help="foreground file is a table (fg_format=2)")
+    parser.add_argument("-w", "--fg-exclude-wg", action="store_true", help="sets 'yes' to exclude within-group comparisons")
+    parser.add_argument("-s", "--fg-stem-only", action="store_true", help="sets 'yes' to only stem comparisons")
 
     # others
     parser.add_argument("-e", "--env", type=Path, metavar="path", default="csubst", help="conda env name where 'csubst' in installed [csubst]")

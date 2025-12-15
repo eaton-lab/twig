@@ -93,7 +93,7 @@ def call_csubst(args):
         "--exhaustive_until", str(args.exhaustive_until),
         "--iqtree_exe", str(BIN_IQTREE),
     ]
-    logger.debug(f"[{args.prefix}] " + " ".join(cmd))
+    logger.debug(f"[{args.alignment}] " + " ".join(cmd))
     if args.verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True, cwd=args.workdir)
     else:

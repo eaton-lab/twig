@@ -116,7 +116,7 @@ def call_macse_refine_alignment(data: Path, outprefix: str, force: bool, max_ite
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
         raise Exception(proc.stderr)
-    return outprefix.with_suffix(outprefix.suffix + ".rmsa.nt.fa")
+    return outprefix.with_suffix(outprefix.suffix + ".tmp.rmsa.nt.fa")
 
 
 def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int, min_percent_at_ends: float, verbose: bool, force: bool):
@@ -209,9 +209,11 @@ def run_macse_refine(args):
 
     # clean up tmp files
     suffices = [
-        ".rmsa.nt.fa",
-        ".rmsa.aa.fa",
-        ".tmp.msa.trimmed.nt.fa",
+        ".tmp.msa.nt.fa",
+        ".tmp.rmsa.nt.fa",
+        ".tmp.rmsa.aa.fa",
+        ".tmp.trimaln.nt.fa",
+        ".tmp.trimaln.info",
     ]
     if not args.keep:
         for suffix in suffices:

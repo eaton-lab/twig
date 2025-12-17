@@ -258,6 +258,7 @@ def run_macse_prep(args):
         args.exclude,
         args.subsample,
         args.min_length,
+        args.min_count,
         args.force,
     )
 

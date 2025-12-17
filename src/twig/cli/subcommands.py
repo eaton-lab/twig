@@ -857,7 +857,7 @@ def get_parser_partition_cds(parser: ArgumentParser | None = None) -> ArgumentPa
     # add arguments
     parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="fasta CDS sequence")
     parser.add_argument("-n", "--number", choices=[2, 3], type=int, metavar="int", default=3, help="number of partitions (2 or 3) [3]")
-    parser.add_argument("-m", "--model", type=str, metavar="str", nargs="+", default="GTR+G", help="subst model for each position (1+2,3) or (1,2,3) for 2 or 3 partitions")
+    parser.add_argument("-m", "--model", type=str, metavar="str", nargs="+", default=["GTR+G"], help="subst model for each position (1+2,3) or (1,2,3) for 2 or 3 partitions")
     parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
     return parser
 

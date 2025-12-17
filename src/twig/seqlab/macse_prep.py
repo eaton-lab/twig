@@ -220,7 +220,7 @@ def run_macse_prep(args):
     # ensure outpath and pdir exists
     if args.outpath.is_dir():
         raise IOError("outpath should be a file path not dir")
-    args.outprefix.parent.mkdir(exist_ok=True, parents=True)
+    args.outpath.parent.mkdir(exist_ok=True, parents=True)
 
     # bail out if final file exists
     if args.outpath.exists() and not args.force:
@@ -267,7 +267,7 @@ def run_macse_prep(args):
             path = args.outpath.parent.glob(args.outpath.name + f".{suffix}")
             if path.exists():
                 path.unlink()
-    logger.info(f"[{args.outprefix.name}] trimmed/filtered sequences written to {args.outprefix}.nt.fa")
+    logger.info(f"[{args.outpath.name}] trimmed/filtered sequences written to {args.outpath}")
 
 
 def main():

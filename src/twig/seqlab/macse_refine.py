@@ -127,7 +127,7 @@ def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int,
         "-respect_first_RF_ON",
         "-half_window_size", str(half_window_size),
         "-min_percent_NT_at_ends", str(min_percent_at_ends),
-        "-out_trim_info", f"{outprefix}.tmp.msa.trimmed.info",
+        "-out_trim_info", f"{outprefix}.tmp.trimaln.info",
         "-out_NT", f"{outprefix}.tmp.trimmed.nt.fa",
     ]
     logger.info("trimming alignment")
@@ -138,7 +138,7 @@ def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int,
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.stderr)
-    return outprefix.with_suffix(outprefix.suffix + ".tmp.msa.trimmed.nt.fa")
+    return outprefix.with_suffix(outprefix.suffix + ".tmp.trimaln.nt.fa")
 
 
 def call_macse_export_alignment(data: Path, outprefix: str, codon_efs, codon_ifs, codon_fst, codon_ist, verbose, force):

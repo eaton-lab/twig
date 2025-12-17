@@ -79,6 +79,7 @@ def filter_sequences(
     exclude: List[str],
     subsample: List[str],
     min_length: int,
+    min_count: int,
     force: bool,
 ) -> None:
     """Write fasta with only one isoform per gene. When multple are present
@@ -187,10 +188,14 @@ def filter_sequences(
             if name not in collapsed:
                 logger.debug(f"[{outpath.name}] {name} excluded by isoform collapse")
 
+    # filter the locus?
+    filtered = len(collapsed) < min_count
+
     # write output
-    with open(outpath, 'w') as hout:
-        for uname in sorted(collapsed):
-            hout.write(f">{uname}\n{seqs[uname]}\n")
+    if not filtered:
+        with open(outpath, 'w') as hout:
+            for uname in sorted(collapsed):
+                hout.write(f">{uname}\n{seqs[uname]}\n")
 
     # report filtering stats
     keys = list(collapsed)
@@ -199,7 +204,8 @@ def filter_sequences(
     mean_homology = data.loc[keys, "homology_total"].mean()
     logger.info(f"[{outpath.name}] {len(info)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}, isoform={f['isoform']}])")
     logger.info(f"[{outpath.name}] stats of retained sequences: mean_nt_length={mean_length:.2f}; mean_nt_trimmed={mean_trimmed:.2f}; mean_homology={mean_homology:.2f}")
-
+    if filtered:
+        logger.info(f"[{outpath.name}] locus did not pass 'min-count' filter ({len(collapsed)} < {min_count})")
 
 
 def run_macse_prep(args):

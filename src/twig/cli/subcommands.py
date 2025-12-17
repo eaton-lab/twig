@@ -453,9 +453,9 @@ def get_parser_macse_prep(parser: ArgumentParser | None = None) -> ArgumentParse
             Examples
             --------
             $ twig macse-prep -i CDS -o OUT.nt.fa
-            $ twig macse-prep -i CDS -mh 0.1 -mi 0.5 -ti 50 -te 50 -mc 15 -c 20
-            $ twig macse-prep -i CDS -mh 0.3 -mi 0.8 -ti 25 -te 25 -mc 15 -c 20
-            $ twig macse-prep -i CDS -mh 0.5 -mc 10 -k -xa -ml 200 -e '^sppA.*'
+            $ twig macse-prep -i CDS -hf 0.1 -hi 0.5 -ti 50 -te 50 -hc 15
+            $ twig macse-prep -i CDS -hf 0.3 -hi 0.8 -ti 25 -te 25 -hc 15
+            $ twig macse-prep -i CDS -hf 0.5 -hc 10 -k -ml 200 -e '^sppA.*'
             $ twig macse-prep -i CDS -s '^sppA.*'
 
             # run parallel jobs on many cds files
@@ -483,6 +483,7 @@ def get_parser_macse_prep(parser: ArgumentParser | None = None) -> ArgumentParse
     parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")
     # options
     parser.add_argument("-ml", "--min-length", type=int, metavar="int", default=0, help="min nt sequence length after trimming [%(default)s]")
+    parser.add_argument("-mc", "--min-count", type=int, metavar="int", default=0, help="min num sequences that must pass filtering to write output [%(default)s]")
     parser.add_argument("-hf", "--min-homology-full", type=float, metavar="float", default=0.1, help="min homology required w/ >=mc others across full sequence [%(default)s]")
     parser.add_argument("-hi", "--min-homology-internal", type=float, metavar="float", default=0.5, help="min homology required w/ >=mc others in the internal sequence [%(default)s]")
     parser.add_argument("-hc", "--min-homology-coverage", type=int, metavar="int", default=3, help="min samples a seq must share homology with at >= mh and mi [%(default)s]")
@@ -583,19 +584,17 @@ def get_parser_macse_refine(parser: ArgumentParser | None = None) -> ArgumentPar
         epilog=dedent("""
             Examples
             --------
-            $ twig macse-refine -i CDS -o PATH/PRE
-            $ twig macse-refine -i CDS -mh 0.1 -mi 0.5 -ti 66 -te 66 -mc 15 -c 20
-            $ twig macse-refine -i CDS -mh 0.3 -mi 0.8 -ti 33 -te 33 -mc 15 -c 20
-            $ twig macse-refine -i CDS -mh 0.5 -mc 10 -k -xa -ml 200 -e '^sppA.*'
-            $ twig macse-refine -i CDS -s '^sppA.*'
+            $ twig macse-refine -i CDS -o PATH/PRE -ac 0.5
+            $ twig macse-refine -i CDS -o PATH/PRE -t NWK -R
+            $ twig macse-refine -i CDS -fs XXX -is XXX
 
             # run parallel jobs on many cds files
             $ parallel -j 10 "twig macse-refine -i {} ..."  ::: CDS/*.msa.nt.fa
 
             # full pipeline
-            $ twig macse-prep -i CDS                     # {CDS}.nt.fa, ...
-            $ twig macse-align -i CDS.nt.fa -o CDS       # {CDS}.msa.nt.fa, ...
-            $ twig macse-refine -i CDS.msa.nt.fa -o CDS  # {CDS}.msa.refined.nt.fa, ...
+            $ twig macse-prep -i CDS -o TRIM        # {TRIM}
+            $ twig macse-align -i TRIM -o ALN       # {ALN}
+            $ twig macse-refine -i ALN -o MSA       # {MSA}.nt.fa, {MSA}.aa.fa
         """)
     )
 
@@ -616,7 +615,7 @@ def get_parser_macse_refine(parser: ArgumentParser | None = None) -> ArgumentPar
     # options
     parser.add_argument("-ml", "--min-length", type=int, metavar="int", default=0, help="min length of non-missing sequence in a sample [%(default)s]")
     parser.add_argument("-ac", "--aln-trim-ends-min-coverage", type=float, metavar="float", default=0.4, help="trim alignment edges to where a min percent of samples have data [%(default)s]")
-    parser.add_argument("-as", "--aln-trim-window-size", type=int, metavar="int", default=5, help="trim alignment using a sliding 'half_window_size' defined as ... [%(default)s]")
+    parser.add_argument("-as", "--aln-trim-window-size", type=int, metavar="int", default=5, help="trim alignment edges using a sliding 'half_window_size' [%(default)s]")
     parser.add_argument("-if", "--codon-int-fs", type=str, metavar="str", default="NNN", help="codon to sub for internal frame shift [NNN]")
     parser.add_argument("-ef", "--codon-ext-fs", type=str, metavar="str", default="NNN", help="codon to sub for external frame shift [NNN]")
     parser.add_argument("-fs", "--codon-final-stop", type=str, metavar="str", default="NNN", help="codon to sub for final stop [NNN]")

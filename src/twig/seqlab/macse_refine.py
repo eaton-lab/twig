@@ -139,8 +139,8 @@ def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int,
 
 def call_macse_export_alignment(data: Path, outprefix: str, codon_efs, codon_ifs, codon_fst, codon_ist, verbose, force):
     """..."""
-    out_nt = outprefix.with_suffix(".msa.refined.nt.fa")
-    out_aa = outprefix.with_suffix(".msa.refined.aa.fa")
+    out_nt = outprefix.with_suffix(outprefix.suffix + ".msa.refined.nt.fa")
+    out_aa = outprefix.with_suffix(outprefix.suffix + ".msa.refined.aa.fa")
     cmd = [
         BIN_MACSE, "-prog", "exportAlignment",
         "-align", str(data),

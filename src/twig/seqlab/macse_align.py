@@ -41,23 +41,23 @@ def run_macse_align(args):
     logger.info(f"[{args.input.name}] alignment written to {args.outprefix}.nt.fa")
 
 
-def call_macse_align(cds_fasta: Path, outdir: Path, prefix: str, max_iter: int, verbose: bool):
+def call_macse_align(cds_fasta: Path, outprefix: str, max_iter: int, verbose: bool):
     """Run Alignment step with default settings"""
     cmd = [
         BIN_MACSE, "-prog", "alignSequences",
         "-seq", str(cds_fasta),
-        "-out_NT", str(outdir / f"{prefix}.msa.nt.fa"),
-        "-out_AA", str(outdir / f"{prefix}.tmp.msa.aa.fa"),
+        "-out_NT", f"{outprefix}.msa.nt.fa",
+        "-out_AA", f"{outprefix}.tmp.msa.aa.fa",
         "-max_refine_iter", str(max_iter),
     ]
-    logger.debug(f"[{prefix}] " + " ".join(cmd))
+    logger.debug(f"[{outprefix.name}] " + " ".join(cmd))
     if verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True)
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.stderr)
-    (outdir / f"{prefix}.tmp.msa.aa.fa").unlink()
+    (outprefix.with_suffix(outprefix.suffix + ".tmp.msa.aa.fa")).unlink()
     return proc.returncode
 
 

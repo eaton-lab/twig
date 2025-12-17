@@ -17,7 +17,7 @@ BIN_MACSE = str(BIN / "macse")
 
 def run_macse_align(args):
     """..."""
-    set_log_level(args.log_level)#, args.log_file)
+    set_log_level(args.log_level)
 
     # check that macse is in PATH
     assert Path(BIN_MACSE).exists(), f"macse binary not found. Checked: {BIN_MACSE}"
@@ -30,6 +30,8 @@ def run_macse_align(args):
     args.outprefix = args.out
     if args.outprefix is None:
         args.outprefix = args.input
+    if args.outprefix.is_dir():
+        args.outprefix = args.outprefix / args.input.name
     args.outprefix.parent.mkdir(exist_ok=True)
 
     # bail out if final file exists

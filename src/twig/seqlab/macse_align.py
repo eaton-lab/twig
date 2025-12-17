@@ -40,7 +40,7 @@ def run_macse_align(args):
         logger.warning(f"[{args.input.name}] [skipping] {result} already exists. Using --force to overwrite")
         return 0
     call_macse_align(args.input, args.outprefix, args.max_refine_iter, args.verbose)
-    logger.info(f"[{args.input.name}] alignment written to {args.outprefix}.nt.fa")
+    logger.info(f"[{args.input.name}] alignment written to {args.outprefix}.msa.nt.fa")
 
 
 def call_macse_align(cds_fasta: Path, outprefix: str, max_iter: int, verbose: bool):

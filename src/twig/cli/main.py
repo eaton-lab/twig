@@ -37,6 +37,7 @@ DISPATCH = {
     "macse-prep": "..seqlab",
     "macse-align": "..seqlab",
     "macse-refine": "..seqlab",
+    "partition-cds": "..seqlab",
     "tree-filter": "..treelab",
     "tree-rooter": "..treelab",
 }

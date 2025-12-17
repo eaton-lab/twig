@@ -821,4 +821,48 @@ def get_parser_tree_rooter(parser: ArgumentParser | None = None) -> ArgumentPars
     return parser
 
 
+def get_parser_partition_cds(parser: ArgumentParser | None = None) -> ArgumentParser:
+    """Return a parser for relabel tool.
+    """
+    kwargs = dict(
+        prog="partition-cds",
+        usage="partition-cds [options]",
+        help="write a partition file for phylogenetic inference",
+        formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
+        description=dedent("""
+            -------------------------------------------------------------------
+            | partition-cds: write a partition file for phylogenetic analysis |
+            -------------------------------------------------------------------
+            | Write a partition file for a CDS alignment to specify substitution
+            | models for phylogenetic inference based on codon position and the
+            | length of the CDS. Writes to stdout.
+            -------------------------------------------------------------------
+        """),
+        epilog=dedent("""
+            Examples
+            --------
+            $ twig partition-cds -i ALN.fa -n 2 -m GTR+G GTR+G > ALN.partition
+            $ twig partition-cds -i ALN.fa -n 3 -m GTR+G GTR+G GTR+G > ALN.partition
+        """)
+    )
+
+    # create parser or connect as subparser to cli parser
+    if parser:
+        kwargs['name'] = kwargs.pop("prog")
+        parser = parser.add_parser(**kwargs)
+    else:
+        kwargs.pop("help")
+        parser = ArgumentParser(**kwargs)
+
+    # add arguments
+    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="fasta CDS sequence")
+    parser.add_argument("-n", "--number", choices=[2, 3], type=int, metavar="int", help="number of partitions (2 or 3) [3]")
+    parser.add_argument("-m", "--model", type=str, metavar="str", nargs="+", help="subst model for each position (1+2,3) or (1,2,3) for 2 or 3 partitions")
+    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
+    return parser
+
+
+
+
 # ...
+

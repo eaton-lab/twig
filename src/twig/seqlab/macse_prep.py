@@ -263,7 +263,7 @@ def run_macse_prep(args):
             path = args.outprefix.with_suffix(args.outprefix.suffix + suffix)
             if path.exists():
                 path.unlink()
-    logger.info(f"[{args.prefix}] trimmed/filtered sequences written to {args.outprefix}.nt.fa")
+    logger.info(f"[{args.outprefix.name}] trimmed/filtered sequences written to {args.outprefix}.nt.fa")
 
 
 def main():

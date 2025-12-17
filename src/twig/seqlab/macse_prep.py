@@ -179,7 +179,7 @@ def filter_sequences(
     for group in groups:
         for name, *_ in groups[group]:
             if name not in collapsed:
-                logger.debug(f"[{trim.name}] {name} excluded by isoform collapse")
+                logger.debug(f"[{outprefix.name}] {name} excluded by isoform collapse")
 
     # write output
     with open(tout, 'w') as hout:
@@ -191,8 +191,8 @@ def filter_sequences(
     mean_length = data.loc[keys, "bp_kept"].mean()
     mean_trimmed = data.loc[keys, "bp_trim"].mean()
     mean_homology = data.loc[keys, "homology_total"].mean()
-    logger.info(f"[{trim.name}] {len(info)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}, isoform={f['isoform']}])")
-    logger.info(f"[{trim.name}] stats of retained sequences: mean_nt_length={mean_length:.2f}; mean_nt_trimmed={mean_trimmed:.2f}; mean_homology={mean_homology:.2f}")
+    logger.info(f"[{outprefix.name}] {len(info)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}, isoform={f['isoform']}])")
+    logger.info(f"[{outprefix.name}] stats of retained sequences: mean_nt_length={mean_length:.2f}; mean_nt_trimmed={mean_trimmed:.2f}; mean_homology={mean_homology:.2f}")
 
 
 

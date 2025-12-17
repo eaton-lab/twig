@@ -125,8 +125,7 @@ def call_macse_trim_non_homologous_fragments(
     min_trim_ext: int,
     min_trim_in: int,
     min_mem_length: int,
-    outdir: Path,
-    prefix: str,
+    outprefix: Path,
     force: bool,
 ):
     """Run macse 'trimNonHomologousFragments' on a CDS fasta.
@@ -139,10 +138,6 @@ def call_macse_trim_non_homologous_fragments(
     -------
     >>> macse -prog trim... -seq CDS.fa ... -out_NT CDS.trim.fa
     """
-    out = outdir / f"{prefix}.trim"
-    if out.exists() and not force:
-        logger.warning(f"[{prefix}] [skipping] {out} already exists")
-        return 0
     cmd = [
         BIN_MACSE, "-prog", "trimNonHomologousFragments",
         "-seq", str(cds_fasta),
@@ -152,19 +147,18 @@ def call_macse_trim_non_homologous_fragments(
         "-min_trim_ext", str(min_trim_ext),
         "-min_trim_in", str(min_trim_in),
         "-min_MEM_length", str(min_mem_length),
-        "-out_trim_info", str(outdir / f"{prefix}.trim_info"),
-        "-out_NT", str(out),
-        "-out_mask_detail", str(outdir / f"{prefix}.tmp.trim_mask"),  # TMP
-        "-out_AA", str(outdir / f"{prefix}.tmp.trim.aa"),             # TMP
+        "-out_trim_info", f"{outprefix}.trim_info",
+        "-out_NT", f"{outprefix}.trim",
+        "-out_mask_detail", f"{outprefix}.tmp.trim_mask",  # TMP
+        "-out_AA", f"{outprefix}.tmp.trim.aa",             # TMP
     ]
-    logger.debug(f"[{prefix}] " + " ".join(cmd))
+    logger.debug(f"[{outprefix.name}] " + " ".join(cmd))
     rc, o, e = run_pipeline([cmd])
     return rc
 
 
 def filter_sequences(
-    outdir: Path,
-    prefix: str,
+    outprefix: str,
     isoform_regex: re.compile,
     exclude: List[str],
     subsample: List[str],
@@ -176,8 +170,9 @@ def filter_sequences(
     ties broken by length, and then order.
     """
     # use trim file if present
-    trim = outdir / f"{prefix}.trim"
-    trim_info = outdir / f"{prefix}.trim_info"
+    prefix = outprefix.name
+    # trim = outdir / f"{prefix}.trim"
+    # trim_info = outdir / f"{prefix}.trim_info"
     out = trim.parent / f"{trim.name}.iso_collapsed"
     if out.exists() and not force:
         logger.debug(f"[{prefix}] [skipping] {out} already exists")        
@@ -188,7 +183,7 @@ def filter_sequences(
 
     # get table with lengths and homology scores
     info = {}
-    with open(trim_info, 'r') as indata:
+    with open(f"{outprefix}.trim_info", 'r') as indata:
         _header = indata.readline()
         for line in indata.readlines():
             data = line.strip().split(";")
@@ -214,7 +209,7 @@ def filter_sequences(
 
     # parse trimmed fasta file
     seqs = {}
-    with open(trim, 'r') as datain:
+    with open(f"{outprefix}.trim", 'r') as datain:
         for line in datain.readlines():
             if line:
                 if line.startswith(">"):

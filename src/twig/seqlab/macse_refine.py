@@ -161,7 +161,7 @@ def call_macse_export_alignment(data: Path, outprefix: str, codon_efs, codon_ifs
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
-        raise subprocess.CalledProcessError(proc.stderr)
+        raise subprocess.CalledProcessError(proc.stdout)
     return out_nt
 
 

@@ -257,13 +257,13 @@ def run_macse_prep(args):
 
     # clean up tmp files
     suffices = [
-        # ".trim_info",
+        ".trim_info",
         ".tmp.aa.fa",
         ".tmp.trim.mask",
     ]
     if not args.keep:
         for suffix in suffices:
-            path = args.outpath.parent / (args.outpath.name + f".{suffix}")
+            path = args.outpath.parent / (args.outpath.name + f"{suffix}")
             if path.exists():
                 path.unlink()
     logger.info(f"[{args.outpath.name}] trimmed/filtered sequences written to {args.outpath}")

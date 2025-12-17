@@ -115,7 +115,7 @@ def call_macse_refine_alignment(data: Path, outprefix: str, force: bool, max_ite
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
-        raise subprocess.CalledProcessError(proc.stderr)
+        raise Exception(proc.stderr)
     return outprefix.with_suffix(outprefix.suffix + ".rmsa.nt.fa")
 
 
@@ -128,7 +128,7 @@ def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int,
         "-half_window_size", str(half_window_size),
         "-min_percent_NT_at_ends", str(min_percent_at_ends),
         "-out_trim_info", f"{outprefix}.tmp.trimaln.info",
-        "-out_NT", f"{outprefix}.tmp.trimmed.nt.fa",
+        "-out_NT", f"{outprefix}.tmp.trimaln.nt.fa",
     ]
     logger.info("trimming alignment")
     logger.debug(f"[{data.name}] " + " ".join(cmd))
@@ -137,7 +137,7 @@ def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int,
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
-        raise subprocess.CalledProcessError(proc.stderr)
+        raise Exception(proc.stderr)
     return outprefix.with_suffix(outprefix.suffix + ".tmp.trimaln.nt.fa")
 
 
@@ -161,7 +161,7 @@ def call_macse_export_alignment(data: Path, outprefix: str, codon_efs, codon_ifs
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
-        raise subprocess.CalledProcessError(proc.stdout)
+        raise Exception(proc.stderr)
     return out_nt
 
 
@@ -196,12 +196,14 @@ def run_macse_refine(args):
 
     # filter by minimum length -> tmp.msa.nt.fa
     data, filtered = filter_sequences(args.input, args.outprefix, args.exclude, args.subsample, args.tree, args.min_length, args.force)
+
     # refine alignmnet -> .tmp.rmsa.nt.fa
     if args.refine_alignment:
         data = call_macse_refine_alignment(data, args.outprefix, args.force, args.max_iter_refine_alignment, args.verbose)
     if args.refine_alignment_if and filtered:
         data = call_macse_refine_alignment(data, args.outprefix, args.force, args.max_iter_refine_alignment, args.verbose)
-    # ...
+
+    # trim edges and export
     data = call_macse_trim_alignment(data, args.outprefix, args.aln_trim_window_size, args.aln_trim_ends_min_coverage, args.verbose, args.force)
     data = call_macse_export_alignment(data, args.outprefix, args.codon_int_fs, args.codon_ext_fs, args.codon_final_stop, args.codon_int_stop, args.verbose, args.force)
 

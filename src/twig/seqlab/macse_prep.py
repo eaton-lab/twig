@@ -260,10 +260,10 @@ def run_macse_prep(args):
     ]
     if not args.keep:
         for suffix in suffices:
-            path = args.outdir / f"{args.prefix}{suffix}"
+            path = args.outprefix.with_suffix(args.outprefix.suffix + suffix)
             if path.exists():
                 path.unlink()
-    logger.info(f"[{args.prefix}] trimmed/filtered sequences written to {args.outdir}/{args.prefix}.nt.fa")
+    logger.info(f"[{args.prefix}] trimmed/filtered sequences written to {args.outprefix}.nt.fa")
 
 
 def main():

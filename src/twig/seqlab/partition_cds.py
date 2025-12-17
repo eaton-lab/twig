@@ -27,13 +27,13 @@ def run_partition_cds(args):
         raise ValueError("--number should match length of --model")
 
     if args.number == 2:
-        print(args.model[0], f"gene_pos1_2 = 1-{length}\\3, 2-{length}\\3")
-        print(args.model[1], f"gene_pos3 = 1-{length}\\3")
+        print(f"{args.model[0]}, gene_pos1_2 = 1-{length}\\3, 2-{length}\\3")
+        print(f"{args.model[1]}, gene_pos3 = 1-{length}\\3")
 
     else:
-        print(args.model[0], f"gene_pos1 = 1-{length}\\3")
-        print(args.model[1], f"gene_pos2 = 2-{length}\\3")
-        print(args.model[2], f"gene_pos3 = 3-{length}\\3")
+        print(f"{args.model[0]}, gene_pos1 = 1-{length}\\3")
+        print(f"{args.model[1]}, gene_pos2 = 2-{length}\\3")
+        print(f"{args.model[2]}, gene_pos3 = 3-{length}\\3")
 
 
 def main():

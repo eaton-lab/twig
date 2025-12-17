@@ -527,15 +527,15 @@ def get_parser_macse_align(parser: ArgumentParser | None = None) -> ArgumentPars
         epilog=dedent("""
             Examples
             --------
-            $ twig macse-align -i CDS -o /OUT/PRE
+            $ twig macse-align -i CDS -o /OUT/CDS.msa
 
             # run parallel jobs on many cds files
             $ parallel -j 10 "twig macse-align -i {} ..." ::: CDS/*.nt.fa
 
             # full pipeline
-            $ twig macse-prep -i CDS                     # {CDS}.nt.fa, ...
-            $ twig macse-align -i CDS.nt.fa -o CDS       # {CDS}.msa.nt.fa, ...
-            $ twig macse-refine -i CDS.msa.nt.fa -o CDS  # {CDS}.msa.refined.nt.fa, ...
+            $ twig macse-prep -i CDS -o TRIM     # {TRIM}
+            $ twig macse-align -i TRIM -o MSA    # {MSA}
+            $ twig macse-refine -i MSA -o MSA    # {MSA}.nt.fa, {MSA}.aa.fa
         """)
     )
     # create parser or connect as subparser to cli parser
@@ -548,7 +548,7 @@ def get_parser_macse_align(parser: ArgumentParser | None = None) -> ArgumentPars
 
     # path args
     parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS (aligned or unaligned)")
-    parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
+    parser.add_argument("-o", "--outpath", type=Path, metavar="path", help="path to write aligned nt fasta")
     # others
     parser.add_argument("-m", "--max-refine-iter", type=int, metavar="int", default=-1, help="max refinement iterations during optimizing [default -1 = no limit]")
     parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")

@@ -32,39 +32,35 @@ def run_macse_align(args):
         raise IOError(f"{args.input} not found")
 
     # ensure outpath and pdir exists
-    args.outprefix = args.out
-    if args.outprefix is None:
-        args.outprefix = args.input
-    if args.outprefix.is_dir():
-        args.outprefix = args.outprefix / args.input.name
-    args.outprefix.parent.mkdir(exist_ok=True)
+    if args.outpath.is_dir():
+        raise IOError("outpath must be a file path not dir")
+    args.outpath.parent.mkdir(exist_ok=True, parents=True)
 
     # bail out if final file exists
-    result = args.outprefix.with_suffix(args.outprefix.suffix + ".msa.nt.fa")
-    if result.exists() and not args.force:
-        logger.warning(f"[{args.input.name}] [skipping] {result} already exists. Using --force to overwrite")
+    if args.outpath.exists() and not args.force:
+        logger.warning(f"[{args.outpath.name}] [skipping] {args.outpath} already exists. Using --force to overwrite")
         return 0
-    call_macse_align(args.input, args.outprefix, args.max_refine_iter, args.verbose)
-    logger.info(f"[{args.input.name}] alignment written to {args.outprefix}.msa.nt.fa")
+    call_macse_align(args.input, args.outpath, args.max_refine_iter, args.verbose)
+    logger.info(f"[{args.outpath.name}] alignment written to {args.outpath}")
 
 
-def call_macse_align(cds_fasta: Path, outprefix: str, max_iter: int, verbose: bool):
+def call_macse_align(cds_fasta: Path, outpath: str, max_iter: int, verbose: bool):
     """Run Alignment step with default settings"""
     cmd = [
         BIN_MACSE, "-prog", "alignSequences",
         "-seq", str(cds_fasta),
-        "-out_NT", f"{outprefix}.msa.nt.fa",
-        "-out_AA", f"{outprefix}.tmp.msa.aa.fa",
+        "-out_NT", f"{outpath}",
+        "-out_AA", f"{outpath}.tmp.aa.fa",
         "-max_refine_iter", str(max_iter),
     ]
-    logger.debug(f"[{outprefix.name}] " + " ".join(cmd))
+    logger.debug(f"[{outpath.name}] " + " ".join(cmd))
     if verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True)
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.stderr)
-    (outprefix.with_suffix(outprefix.suffix + ".tmp.msa.aa.fa")).unlink()
+    (outpath.with_suffix(outpath.suffix + ".tmp.aa.fa")).unlink()
     return proc.returncode
 
 

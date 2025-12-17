@@ -21,6 +21,8 @@ def run_partition_cds(args):
         raise ValueError("CDS length is not a multiple of 3")
 
     # require nmodels to match n...
+    if len(args.model) == 1:
+        args.model = args.model * args.number
     if args.number != len(args.model):
         raise ValueError("--number should match length of --model")
 

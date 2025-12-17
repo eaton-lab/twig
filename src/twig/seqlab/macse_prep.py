@@ -26,8 +26,7 @@ def call_macse_trim_non_homologous_fragments(
     min_trim_ext: int,
     min_trim_in: int,
     min_mem_length: int,
-    outdir: Path,
-    prefix: str,
+    outprefix: str,
     # kwargs: ...,
     verbose: bool,
     force: bool,
@@ -51,12 +50,12 @@ def call_macse_trim_non_homologous_fragments(
         "-min_trim_ext", str(min_trim_ext),
         "-min_trim_in", str(min_trim_in),
         "-min_MEM_length", str(min_mem_length),
-        "-out_NT", str(outdir / f"{prefix}.trim"),
-        "-out_AA", str(outdir / f"{prefix}.tmp.aa.fa"),
-        "-out_trim_info", str(outdir / f"{prefix}.trim_info"),
-        "-out_mask_detail", str(outdir / f"{prefix}.tmp.trim_mask"),
+        "-out_NT", f"{outprefix}.trim",
+        "-out_AA", f"{outprefix}.tmp.aa.fa",
+        "-out_trim_info", f"{outprefix}.trim_info",
+        "-out_mask_detail", f"{outprefix}.tmp.trim.mask",
     ]
-    logger.debug(f"[{prefix}] " + " ".join(cmd))
+    logger.debug(f"[{outprefix.name}] " + " ".join(cmd))
     if verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True)
     else:
@@ -268,6 +267,7 @@ def run_macse_prep(args):
 
 
 def main():
+    from twig.cli.subcommands import get_parser_macse_prep
     parser = get_parser_macse_prep()
     args = parser.parse_args()
     run_macse_prep(args)

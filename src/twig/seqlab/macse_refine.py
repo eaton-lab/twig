@@ -2,6 +2,12 @@
 
 """Subselect, refine, trim, and export a CDS alignment to CDS/AA.
 
+If you call:
+$ twig macse-refine -i CDS -o OUT/ID.refined
+
+It will produce:
+- OUT/ID.refined.aa.fa
+- OUT/ID.refined.nt.fa
 """
 
 from typing import List

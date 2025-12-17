@@ -2,6 +2,14 @@
 
 """Prep sequences for macse alignment (trim,filter,iso-collapse)
 
+
+If you call:
+$ twig macse-prep -i CDS -o OUT/ID.nt.fa
+
+It will produce:
+- OUT/ID.nt.fa
+- OUT/ID.nt.fa.trim_info
+
 """
 
 from typing import List
@@ -26,7 +34,7 @@ def call_macse_trim_non_homologous_fragments(
     min_trim_ext: int,
     min_trim_in: int,
     min_mem_length: int,
-    outprefix: str,
+    outpath: str,
     # kwargs: ...,
     verbose: bool,
     force: bool,
@@ -50,12 +58,12 @@ def call_macse_trim_non_homologous_fragments(
         "-min_trim_ext", str(min_trim_ext),
         "-min_trim_in", str(min_trim_in),
         "-min_MEM_length", str(min_mem_length),
-        "-out_NT", f"{outprefix}.trim",
-        "-out_AA", f"{outprefix}.tmp.aa.fa",
-        "-out_trim_info", f"{outprefix}.trim_info",
-        "-out_mask_detail", f"{outprefix}.tmp.trim.mask",
+        "-out_NT", f"{outpath}",
+        "-out_AA", f"{outpath}.tmp.aa.fa",
+        "-out_trim_info", f"{outpath}.trim_info",
+        "-out_mask_detail", f"{outpath}.tmp.trim.mask",
     ]
-    logger.debug(f"[{outprefix.name}] " + " ".join(cmd))
+    logger.debug(f"[{outpath.name}] " + " ".join(cmd))
     if verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True)
     else:
@@ -66,7 +74,7 @@ def call_macse_trim_non_homologous_fragments(
 
 
 def filter_sequences(
-    outprefix: str,
+    outpath: Path,
     isoform_regex: re.compile,
     exclude: List[str],
     subsample: List[str],
@@ -78,9 +86,7 @@ def filter_sequences(
     ties broken by length, and then order.
     """
     # use trim file if present
-    trim = outprefix.with_suffix(outprefix.suffix + ".trim")
-    tnfo = outprefix.with_suffix(outprefix.suffix + ".trim_info")
-    tout = outprefix.with_suffix(outprefix.suffix + ".nt.fa")
+    tnfo = outpath.with_suffix(outpath.suffix + ".trim_info")
 
     # keep track of filtered-by
     f = {"homology": 0, "min_length": 0, "isoform": 0, "user": 0}
@@ -109,11 +115,11 @@ def filter_sequences(
     f['homology'] = data.loc[data['discarded']].shape[0]
     low_homology = data.loc[data['discarded']]
     for i in low_homology.index:
-        logger.debug(f"[{trim.name}] {i} excluded by low_homology ({low_homology.loc[i, 'homology_internal']:.3f},{low_homology.loc[i, 'homology_total']:.3f})")
+        logger.debug(f"[{outpath.name}] {i} excluded by low_homology ({low_homology.loc[i, 'homology_internal']:.3f},{low_homology.loc[i, 'homology_total']:.3f})")
 
     # parse trimmed fasta file
     seqs = {}
-    with open(trim, 'r') as datain:
+    with open(outpath, 'r') as datain:
         for line in datain.readlines():
             if line:
                 if line.startswith(">"):
@@ -140,14 +146,14 @@ def filter_sequences(
 
         # exclude if user-excluded
         if name in matched:
-            logger.debug(f"[{trim.name}] {name} excluded by user args")
+            logger.debug(f"[{outpath.name}] {name} excluded by user args")
             f["user"] += 1
             continue
 
         # exclude if too short
         seq = seqs[name]
         if len(seq) < min_length:
-            logger.debug(f"[{trim.name}] {name} excluded by min_length ({len(seq)})")
+            logger.debug(f"[{outpath.name}] {name} excluded by min_length ({len(seq)})")
             f["min_length"] += 1
             continue
 
@@ -179,10 +185,10 @@ def filter_sequences(
     for group in groups:
         for name, *_ in groups[group]:
             if name not in collapsed:
-                logger.debug(f"[{outprefix.name}] {name} excluded by isoform collapse")
+                logger.debug(f"[{outpath.name}] {name} excluded by isoform collapse")
 
     # write output
-    with open(tout, 'w') as hout:
+    with open(outpath, 'w') as hout:
         for uname in sorted(collapsed):
             hout.write(f">{uname}\n{seqs[uname]}\n")
 
@@ -191,8 +197,8 @@ def filter_sequences(
     mean_length = data.loc[keys, "bp_kept"].mean()
     mean_trimmed = data.loc[keys, "bp_trim"].mean()
     mean_homology = data.loc[keys, "homology_total"].mean()
-    logger.info(f"[{outprefix.name}] {len(info)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}, isoform={f['isoform']}])")
-    logger.info(f"[{outprefix.name}] stats of retained sequences: mean_nt_length={mean_length:.2f}; mean_nt_trimmed={mean_trimmed:.2f}; mean_homology={mean_homology:.2f}")
+    logger.info(f"[{outpath.name}] {len(info)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}, isoform={f['isoform']}])")
+    logger.info(f"[{outpath.name}] stats of retained sequences: mean_nt_length={mean_length:.2f}; mean_nt_trimmed={mean_trimmed:.2f}; mean_homology={mean_homology:.2f}")
 
 
 
@@ -212,15 +218,13 @@ def run_macse_prep(args):
         raise ValueError("choose one of --exclude or --subample, but not both")
 
     # ensure outpath and pdir exists
-    args.outprefix = args.out
-    if args.outprefix is None:
-        args.outprefix = args.input
-    args.outprefix.parent.mkdir(exist_ok=True)
+    if args.outpath.is_dir():
+        raise IOError("outpath should be a file path not dir")
+    args.outprefix.parent.mkdir(exist_ok=True, parents=True)
 
     # bail out if final file exists
-    result = args.outprefix.with_suffix(args.outprefix.suffix + ".nt.fa")
-    if result.exists() and not args.force:
-        logger.warning(f"[{args.input.name}] [skipping] {result} already exists. Using --force to overwrite")
+    if args.outpath.exists() and not args.force:
+        logger.warning(f"[{args.input.name}] [skipping] {args.outpath} already exists. Using --force to overwrite")
         return
 
     # if skip isoform collapse then set isoform grouper to arbitrary str
@@ -236,14 +240,14 @@ def run_macse_prep(args):
         args.min_trim_length_homology_external,
         args.min_trim_length_homology_internal,
         args.mem_length,
-        args.outprefix,
+        args.outpath,
         args.verbose,
         args.force,
     )
 
     # filter by minimum length
     filter_sequences(
-        args.outprefix,
+        args.outpath,
         args.isoform_regex,
         args.exclude,
         args.subsample,
@@ -260,7 +264,7 @@ def run_macse_prep(args):
     ]
     if not args.keep:
         for suffix in suffices:
-            path = args.outprefix.with_suffix(args.outprefix.suffix + suffix)
+            path = args.outpath.parent.glob(args.outpath.name + f".{suffix}")
             if path.exists():
                 path.unlink()
     logger.info(f"[{args.outprefix.name}] trimmed/filtered sequences written to {args.outprefix}.nt.fa")

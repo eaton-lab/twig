@@ -2,6 +2,11 @@
 
 """Prep align sequences
 
+If you call:
+$ twig macse-align -i CDS -o OUT/ID.msa.nt.fa
+
+It will produce:
+- OUT/ID.msa.nt.fa
 """
 
 import subprocess

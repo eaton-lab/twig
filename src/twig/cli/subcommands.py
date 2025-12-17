@@ -609,7 +609,7 @@ def get_parser_macse_refine(parser: ArgumentParser | None = None) -> ArgumentPar
 
     # path args
     parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input aligned CDS")
-    parser.add_argument("-o", "--out", type=Path, metavar="path", help="out prefix; default is input path [{input}]")
+    parser.add_argument("-o", "--outprefix", type=Path, metavar="path", required=True, help="out prefix; creates {prefix}.nt.fa and {prefix}.aa.fa")
     parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
     parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")
     parser.add_argument("-t", "--tree", type=Path, metavar="path", help="optional newick file to subsample genes present in tree")

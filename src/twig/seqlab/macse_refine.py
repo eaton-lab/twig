@@ -30,7 +30,6 @@ def filter_sequences(cds_fasta: Path, outprefix: Path, exclude: List[str], subsa
     """
     # logger.info("filtering alignment")
     pre = cds_fasta.name
-    out = outprefix.with_suffix(outprefix.suffix + ".tmp.msa.nt.fa")
 
     # parse trimmed fasta file
     seqs = {}
@@ -91,6 +90,7 @@ def filter_sequences(cds_fasta: Path, outprefix: Path, exclude: List[str], subsa
     logger.info(f"[{pre}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")
 
     # write output
+    out = outprefix.with_suffix(outprefix.suffix + ".tmp.msa.nt.fa")
     if sum(f.values()):
         with open(out, 'w') as hout:
             for uname in keep:
@@ -104,8 +104,8 @@ def call_macse_refine_alignment(data: Path, outprefix: str, force: bool, max_ite
     cmd = [
         BIN_MACSE, "-prog", "refineAlignment",
         "-align", str(data),
-        "-out_NT", f"{outprefix}.rmsa.nt.fa",
-        "-out_AA", f"{outprefix}.rmsa.aa.fa",
+        "-out_NT", f"{outprefix}.tmp.rmsa.nt.fa",
+        "-out_AA", f"{outprefix}.tmp.rmsa.aa.fa",
         "-max_refine_iter", str(max_iter),
     ]
     logger.info("refining alignment")
@@ -121,16 +121,14 @@ def call_macse_refine_alignment(data: Path, outprefix: str, force: bool, max_ite
 
 def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int, min_percent_at_ends: float, verbose: bool, force: bool):
     """..."""
-    dataout = outprefix.with_suffix(outprefix.suffix + ".tmp.msa.trimmed.nt.fa")
-    datainfo = outprefix.with_suffix(outprefix.suffix + ".msa.trimmed.info")
     cmd = [
         BIN_MACSE, "-prog", "trimAlignment",
         "-align", str(data),
         "-respect_first_RF_ON",
         "-half_window_size", str(half_window_size),
         "-min_percent_NT_at_ends", str(min_percent_at_ends),
-        "-out_trim_info", str(datainfo),
-        "-out_NT", str(dataout),
+        "-out_trim_info", f"{outprefix}.tmp.msa.trimmed.info",
+        "-out_NT", f"{outprefix}.tmp.trimmed.nt.fa",
     ]
     logger.info("trimming alignment")
     logger.debug(f"[{data.name}] " + " ".join(cmd))
@@ -140,13 +138,13 @@ def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int,
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.stderr)
-    return dataout
+    return outprefix.with_suffix(outprefix.suffix + ".tmp.msa.trimmed.nt.fa")
 
 
 def call_macse_export_alignment(data: Path, outprefix: str, codon_efs, codon_ifs, codon_fst, codon_ist, verbose, force):
     """..."""
-    out_nt = outprefix.with_suffix(outprefix.suffix + ".msa.refined.nt.fa")
-    out_aa = outprefix.with_suffix(outprefix.suffix + ".msa.refined.aa.fa")
+    out_nt = outprefix.with_suffix(outprefix.suffix + ".nt.fa")
+    out_aa = outprefix.with_suffix(outprefix.suffix + ".aa.fa")
     cmd = [
         BIN_MACSE, "-prog", "exportAlignment",
         "-align", str(data),
@@ -186,23 +184,24 @@ def run_macse_refine(args):
         raise ValueError("choose one of --exclude, --subample, or --tree")
 
     # ensure outpath and pdir exists
-    args.outprefix = args.out
-    if args.outprefix is None:
-        args.outprefix = args.input
-    args.outprefix.parent.mkdir(exist_ok=True)
+    if args.outprefix.is_dir():
+        raise IOError("outprefix must be a file path prefix, not a directory")
+    args.outprefix.parent.mkdir(exist_ok=True, parents=True)
 
     # bail out if final file exists
-    result = args.outprefix.with_suffix(args.outprefix.suffix + ".msa.refined.nt.fa")
+    result = args.outprefix.with_suffix(args.outprefix.suffix + ".nt.fa")
     if result.exists() and not args.force:
-        logger.warning(f"[{args.input.name}] [skipping] {result} already exists. Using --force to overwrite")
+        logger.warning(f"[{args.outprefix.name}] [skipping] {result} already exists. Using --force to overwrite")
         return
 
-    # filter by minimum length
+    # filter by minimum length -> tmp.msa.nt.fa
     data, filtered = filter_sequences(args.input, args.outprefix, args.exclude, args.subsample, args.tree, args.min_length, args.force)
+    # refine alignmnet -> .tmp.rmsa.nt.fa
     if args.refine_alignment:
         data = call_macse_refine_alignment(data, args.outprefix, args.force, args.max_iter_refine_alignment, args.verbose)
     if args.refine_alignment_if and filtered:
         data = call_macse_refine_alignment(data, args.outprefix, args.force, args.max_iter_refine_alignment, args.verbose)
+    # ...
     data = call_macse_trim_alignment(data, args.outprefix, args.aln_trim_window_size, args.aln_trim_ends_min_coverage, args.verbose, args.force)
     data = call_macse_export_alignment(data, args.outprefix, args.codon_int_fs, args.codon_ext_fs, args.codon_final_stop, args.codon_int_stop, args.verbose, args.force)
 

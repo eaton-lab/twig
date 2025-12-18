@@ -323,7 +323,7 @@ def run_macse_refine(args):
         # TRIM EDGES
         data = call_macse_trim_alignment(data, args.outprefix, args.aln_trim_window_size, args.aln_trim_ends_min_coverage, args.verbose)
         # DROP MIN_OV SAMPLES
-        kept, removed, success = filter_by_min_overlap(data, 20, 20)
+        kept, removed, success = filter_by_min_overlap(data, 50, 20)
         logger.warning(f"kept={kept}")
         logger.warning(f"removed={removed}")
         logger.warning(f"filtered={filtered}")

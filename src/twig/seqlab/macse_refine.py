@@ -203,8 +203,8 @@ def filter_by_selection(fasta: Path, outprefix: Path, exclude: List[str], subsam
 
 def filter_by_min_overlap(fasta: Path, min_ov: int, min_samples: int):
     seqs = parse_fasta_to_dict(fasta)
-    arr = present_matrix(seqs)
-    names, ovarr = overlap_matrix(arr)
+    names, arr = present_matrix(seqs)
+    ovarr = overlap_matrix(arr)
     kept, removed, filtered = prune_to_pairwise_min_overlap(names, ovarr, min_ov, arr.sum(axis=1), min_samples)
     return kept, removed, filtered
 

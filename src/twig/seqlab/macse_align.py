@@ -59,7 +59,7 @@ def call_macse_align(cds_fasta: Path, outpath: str, max_iter: int, verbose: bool
     else:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode:
-        raise subprocess.CalledProcessError(proc.stderr)
+        raise Exception(proc.stderr)
     (outpath.with_suffix(outpath.suffix + ".tmp.aa.fa")).unlink()
     return proc.returncode
 

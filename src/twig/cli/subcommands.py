@@ -200,9 +200,9 @@ def get_parser_diamond_pw(parser: ArgumentParser | None = None) -> ArgumentParse
     parser.add_argument("-e", "--evalue", type=float, metavar="float", default=1e-5, help="max evalue to report an alignment [%(default)s]")
     parser.add_argument("-m", "--min-bitscore", type=float, metavar="float", default=None, help="min bit-score to report an alignment (overrides -e) [%(default)s]")
     parser.add_argument("-k", "--max-target-seqs", type=int, metavar="int", default=25, help="max n target seqs to report hits for [%(default)s]")
+    parser.add_argument("-t", "--threads", type=int, default=4, metavar="int", help="number of threads per diamond job [%(default)s]")
+    parser.add_argument("-j", "--jobs", type=int, default=1, metavar="int", help="number of diamond jobs to run in parallel [%(default)s]")
     parser.add_argument("-d", "--dbdir", type=Path, metavar="path", default=TMPDIR, help="directory for temp .db files [%(default)s]")
-    parser.add_argument("-t", "--threads", type=int, default=4, help="number of threads per diamond job [%(default)s]")
-    parser.add_argument("-j", "--jobs", type=int, default=1, help="number of diamond jobs to run in parallel [%(default)s]")
     parser.add_argument("-n", "--no-self", action="store_true", help="do not perform self-self search")
     parser.add_argument("-f", "--force", action="store_true", help="overwrite .db files if they exist in dbdir")
     # parser.add_argument("-r", "--relabel-headers", type=int, default=1, help="...")
@@ -272,6 +272,7 @@ def get_parser_format_fasta(parser: ArgumentParser | None = None) -> ArgumentPar
     relabel_options.add_argument("--relabel-prefix", type=str, metavar="str", default="", help="append prefix label to start of existing labels [%(default)s]")
     relabel_options.add_argument("--relabel-prefix-idx", type=str, metavar="str", default="", help="overwrite labels with {{prefix}}{{counter}} using incrementing counter [%(default)s]")
     relabel_options.add_argument("--relabel-list", type=str, metavar="str", nargs="+", help="overwrite labels with new labels provided as a list [%(default)s]")
+    # relabel_options.add_argument("--relabel-from-map", type=str, metavar="str", nargs="+", help="overwrite labels with new labels provided as a list [%(default)s]")
     parser.add_argument("--map", type=Path, metavar="Path", default=None, help="path to write optional relabel translation map (TSV format) [%(default)s]")
 
     sub_options = parser.add_mutually_exclusive_group()
@@ -817,6 +818,52 @@ def get_parser_tree_rooter(parser: ArgumentParser | None = None) -> ArgumentPars
     # logging
     parser.add_argument("-l", "--log-level", type=str, metavar="level", default="CRITICAL", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
     # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
+    return parser
+
+
+def get_parser_tree_skeleton(parser: ArgumentParser | None = None) -> ArgumentParser:
+    """Return a parser for relabel tool.
+    """
+    KWARGS = dict(
+        prog="tree-skeleton",
+        usage="tree-skeleton [options]",
+        help="Force gene tree to match species tree topology",
+        formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=140, max_help_position=140),
+        description=dedent("""
+            -------------------------------------------------------------------
+            | tree-skeleton
+            -------------------------------------------------------------------
+            | ...
+            -------------------------------------------------------------------
+        """),
+        epilog=dedent("""
+            Examples
+            --------
+            $ twig tree-skeleton -g NWK1 -s NWK2 > NWK3
+            $ twig tree-skeleton -g NWK1 -s NWK2 -d "|" -di 0 > NWK3
+        """)
+    )
+    # create parser or connect as subparser to cli parser
+    if parser:
+        KWARGS['name'] = KWARGS.pop("prog")
+        parser = parser.add_parser(**KWARGS)
+    else:
+        KWARGS.pop("help")
+        parser = ArgumentParser(**KWARGS)
+
+    # path i/o args
+    parser.add_argument("-g", "--gtree", type=Path, metavar="path", required=True, help="newick or multi-newick gene trees file")
+    parser.add_argument("-s", "--sptree", type=Path, metavar="path", required=True, help="newick species tree file")
+    parser.add_argument("-o", "--out", type=Path, metavar="path", help="outfile name else printed to stdout")
+
+    # parsing names
+    parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip labels")
+    parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
+    parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
+
+    # ...
+    parser.add_argument("-rd", "--relabel-delim", action="store_true", help="relabel tips by their delim parsed names")
+    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="CRITICAL", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
     return parser
 
 

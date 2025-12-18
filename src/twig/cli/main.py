@@ -40,6 +40,7 @@ DISPATCH = {
     "partition-cds": "..seqlab",
     "tree-filter": "..treelab",
     "tree-rooter": "..treelab",
+    "tree-skeleton": "..treelab",
 }
 
 

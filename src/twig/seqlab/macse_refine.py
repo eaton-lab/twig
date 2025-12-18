@@ -333,7 +333,7 @@ def run_macse_refine(args):
             logger.info(f"removed {name} by min ov")
         if not success:
             raise Exception("locus filtered")
-        else:
+        if not removed:
             break
 
     # WRITE TRANSLATED ALIGNMENT

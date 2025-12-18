@@ -326,6 +326,9 @@ def run_macse_refine(args):
         # data, filtered = filter_by_min_values()
         # DROP MIN_OV SAMPLES
         kept, removed, filtered = filter_by_min_overlap(data, 20, 20)
+        logger.warning(f"kept={kept}")
+        logger.warning(f"removed={removed}")
+        logger.warning(f"filtered={filtered}")
         args.subsample = kept
         for name in removed:
             # logger.info(f"[{args.outprefix.name}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")

@@ -172,9 +172,6 @@ def filter_by_selection(fasta: Path, outprefix: Path, exclude: List[str], subsam
         else:
             keep[name] = seq
 
-    # report
-    logger.info(f"[{pre}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")
-
     # write output
     out = outprefix.with_suffix(outprefix.suffix + ".tmp.msa.nt.fa")
     if sum(f.values()):
@@ -333,6 +330,7 @@ def run_macse_refine(args):
         if filtered:
             raise Exception("locus filtered")
         for name in removed:
+            # logger.info(f"[{args.outprefix.name}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")
             logger.info(f"removed {name} by min ov")
         if not removed:
             break

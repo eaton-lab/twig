@@ -325,9 +325,9 @@ def run_macse_refine(args):
         # DROP MIN_OV SAMPLES
         kept, removed, success = filter_by_min_overlap(data, args.min_overlap, args.min_samples)
         args.subsample = kept
-        for name in removed:
+        for name, minov, _ in removed:
             # logger.info(f"[{args.outprefix.name}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")
-            logger.info(f"removed {name} by min ov")
+            logger.info(f"[{args.outprefix.name}] removed {name} by min-ov ({minov}) < min overlap")
         if not success:
             raise Exception("locus filtered")
         if not removed:

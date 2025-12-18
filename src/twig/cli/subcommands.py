@@ -614,7 +614,7 @@ def get_parser_macse_refine(parser: ArgumentParser | None = None) -> ArgumentPar
     parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")
     parser.add_argument("-t", "--tree", type=Path, metavar="path", help="optional newick file to subsample genes present in tree")
     # options
-    parser.add_argument("-mo", "--min-overlap", type=int, metavar="int", default=0, help="min non-missing sites shared by each pair of samples, else prune lowest [%(default)s]")
+    parser.add_argument("-mo", "--min-overlap", type=int, metavar="int", default=0, help="min sites shared by each pair of samples, else iter prune lowest [%(default)s]")
     parser.add_argument("-ms", "--min-samples", type=int, metavar="int", default=0, help="min samples after filtering else error [%(default)s]")
     # parser.add_argument("-ml", "--min-length", type=int, metavar="int", default=0, help="min length of non-missing sequence in a sample [%(default)s]")
     parser.add_argument("-ac", "--aln-trim-ends-min-coverage", type=float, metavar="float", default=0.4, help="trim alignment edges to where a min percent of samples have data [%(default)s]")

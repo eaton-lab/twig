@@ -2,6 +2,11 @@
 
 """Subselect, refine, trim, and export a CDS alignment to CDS/AA.
 
+1. subsample by user selection and re-align
+2. trim edges
+3. filter to remove short or terraced samples and re-align
+4. export
+
 If you call:
 $ twig macse-refine -i CDS -o OUT/ID.refined
 
@@ -10,37 +15,128 @@ It will produce:
 - OUT/ID.refined.nt.fa
 """
 
-from typing import List
+from __future__ import annotations
+from typing import Dict, List, Tuple
 import re
 import sys
 import subprocess
 from pathlib import Path
 from loguru import logger
 import toytree
+import numpy as np
 from twig.utils.logger_setup import set_log_level
 
 BIN = Path(sys.prefix) / "bin"
 BIN_MACSE = str(BIN / "macse")
+MISSING = set(["-", "N", "n", "?", "."])
 
 
-def filter_sequences(cds_fasta: Path, outprefix: Path, exclude: List[str], subsample: List[str], subsample_tree: Path, min_length: int, force: bool) -> None:
+def parse_fasta_to_dict(path: str) -> Dict[str, str]:
+    seqs: Dict[str, List[str]] = {}
+    name = None
+    with open(path) as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith(">"):
+                name = line[1:].strip()
+                seqs[name] = []
+            else:
+                if name is None:
+                    raise ValueError("FASTA starts with sequence before any header.")
+                seqs[name].append(line)
+    return {k: "".join(v) for k, v in seqs.items()}
+
+
+def present_matrix(seqs: Dict[str, str], missing=MISSING) -> Tuple[List[str], np.ndarray]:
+    names = list(seqs.keys())
+    L = len(seqs[names[0]])
+    for n in names[1:]:
+        if len(seqs[n]) != L:
+            raise ValueError("All sequences must have the same alignment length.")
+    arr = np.empty((len(names), L), dtype=np.bool_)
+    for i, n in enumerate(names):
+        s = seqs[n]
+        arr[i] = np.fromiter((c not in missing for c in s), count=L, dtype=np.bool_)
+    return names, arr
+
+
+def overlap_matrix(present: np.ndarray) -> np.ndarray:
+    x = present.astype(np.uint16, copy=False)
+    return x @ x.T  # (n,n), diagonal = present counts
+
+
+def prune_to_pairwise_min_overlap(
+    names: List[str],
+    overlap: np.ndarray,
+    min_ov: int,
+    present_counts: np.ndarray | None = None,
+    min_keep: int = 2,
+) -> Tuple[List[str], List[Tuple[str, int, str]], bool]:
+    """
+    Keep a set S such that overlap(i,j) >= min_ov for EVERY i!=j in S.
+    Drop one sample at a time until satisfied, or fail (kept < min_keep).
+
+    Returns:
+      kept_names,
+      removed_log: (removed_name, min_overlap_at_removal, partner_name_at_that_min),
+      success: bool
+    """
+    n = len(names)
+    if overlap.shape != (n, n):
+        raise ValueError("overlap must be (n,n) matching names length.")
+
+    active = np.ones(n, dtype=bool)
+    removed: List[Tuple[str, int, str]] = []
+
+    while active.sum() >= min_keep:
+        idx = np.flatnonzero(active)
+        sub = overlap[np.ix_(idx, idx)].astype(int, copy=False)
+
+        k = sub.shape[0]
+        if k < 2:
+            break
+
+        offdiag = ~np.eye(k, dtype=bool)
+
+        # global minimum overlap among remaining pairs (excluding diagonal)
+        min_val = sub[offdiag].min()
+        if min_val >= min_ov:
+            return [names[i] for i in idx], removed, True
+
+        # one worst pair (i,j) achieving min_val
+        wi, wj = np.argwhere((sub == min_val) & offdiag)[0]
+        gi, gj = int(idx[wi]), int(idx[wj])
+
+        # decide which endpoint to drop:
+        # drop the one with smaller mean overlap to others (tie-break: fewer present sites)
+        row_sums = sub.sum(axis=1) - np.diag(sub)         # exclude self
+        means = row_sums / (k - 1)
+
+        drop_local = wi if means[wi] < means[wj] else wj
+
+        if means[wi] == means[wj] and present_counts is not None:
+            pci, pcj = present_counts[gi], present_counts[gj]
+            drop_local = wi if pci <= pcj else wj
+
+        drop_global = int(idx[drop_local])
+        partner_global = gj if drop_global == gi else gi
+
+        removed.append((names[drop_global], int(min_val), names[partner_global]))
+        active[drop_global] = False
+
+    kept = [names[i] for i in np.flatnonzero(active)]
+    return kept, removed, False
+
+
+def filter_by_selection(fasta: Path, outprefix: Path, exclude: List[str], subsample: List[str], subsample_tree: Path) -> None:
     """Write fasta with only one isoform per gene. When multple are present
     the one with greatest homology to other sequences is retained, with
     ties broken by length, and then order.
     """
-    # logger.info("filtering alignment")
-    pre = cds_fasta.name
-
-    # parse trimmed fasta file
-    seqs = {}
-    with open(cds_fasta, 'r') as datain:
-        for line in datain.readlines():
-            if line:
-                if line.startswith(">"):
-                    uname = line.strip()[1:]
-                    seqs[uname] = ""
-                else:
-                    seqs[uname] += line.strip()
+    pre = fasta.name
+    seqs = parse_fasta_to_dict(fasta)
 
     # raise an exception if not aligned
     lengths = [len(i) for i in seqs.values()]
@@ -67,24 +163,14 @@ def filter_sequences(cds_fasta: Path, outprefix: Path, exclude: List[str], subsa
                 logger.info(t)
 
     # group sequences by isoform regex
-    f = {"min_length": 0, "user": 0}
+    f = {"user": 0}
     keep = {}
     for name, seq in seqs.items():
-
-        # exclude if user-excluded
         if name in matched:
             logger.debug(f"[{pre}] {name} excluded by user args")
             f["user"] += 1
-            continue
-
-        # exclude if too short
-        seq = seqs[name]
-        nbases = sum(1 for i in seq if i != "-")
-        if nbases < min_length:
-            logger.debug(f"[{pre}] {name} excluded by min_length ({len(seq)})")
-            f["min_length"] += 1
-            continue
-        keep[name] = seq
+        else:
+            keep[name] = seq
 
     # report
     logger.info(f"[{pre}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")
@@ -96,10 +182,37 @@ def filter_sequences(cds_fasta: Path, outprefix: Path, exclude: List[str], subsa
             for uname in keep:
                 hout.write(f">{uname}\n{keep[uname]}\n")
         return out, True
-    return cds_fasta, False
+    # nothing was filtered, return orig file and False
+    return fasta, False
 
 
-def call_macse_refine_alignment(data: Path, outprefix: str, force: bool, max_iter: int, verbose: bool):
+# def filter_by_min_values(fasta: Path, min_length: int, min_sample: int):
+#     """..."""
+#     seqs = parse_fasta_to_dict(fasta)
+
+#     # group sequences by isoform regex
+#     f = {"min_length": 0,}
+#     keep = {}
+#     for name, seq in seqs.items():
+
+#         # exclude if too short
+#         nbases = sum(1 for i in seq if i != "-")
+#         if nbases < min_length:
+#             logger.debug(f"[{fasta.name}] {name} excluded by min_length ({len(seq)})")
+#             f["min_length"] += 1
+#             continue
+#         keep[name] = seq
+
+
+def filter_by_min_overlap(fasta: Path, min_ov: int, min_samples: int):
+    seqs = parse_fasta_to_dict(fasta)
+    arr = present_matrix(seqs)
+    names, ovarr = overlap_matrix(arr)
+    kept, removed, filtered = prune_to_pairwise_min_overlap(names, ovarr, min_ov, arr.sum(axis=1), min_samples)
+    return kept, removed, filtered
+
+
+def call_macse_refine_alignment(data: Path, outprefix: str, max_iter: int, verbose: bool):
     """Run Alignment step with default settings"""
     cmd = [
         BIN_MACSE, "-prog", "refineAlignment",
@@ -119,7 +232,7 @@ def call_macse_refine_alignment(data: Path, outprefix: str, force: bool, max_ite
     return outprefix.with_suffix(outprefix.suffix + ".tmp.rmsa.nt.fa")
 
 
-def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int, min_percent_at_ends: float, verbose: bool, force: bool):
+def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int, min_percent_at_ends: float, verbose: bool, ):
     """..."""
     cmd = [
         BIN_MACSE, "-prog", "trimAlignment",
@@ -141,7 +254,7 @@ def call_macse_trim_alignment(data: Path, outprefix: str, half_window_size: int,
     return outprefix.with_suffix(outprefix.suffix + ".tmp.trimaln.nt.fa")
 
 
-def call_macse_export_alignment(data: Path, outprefix: str, codon_efs, codon_ifs, codon_fst, codon_ist, verbose, force):
+def call_macse_export_alignment(data: Path, outprefix: str, codon_efs, codon_ifs, codon_fst, codon_ist, verbose):
     """..."""
     out_nt = outprefix.with_suffix(outprefix.suffix + ".nt.fa")
     out_aa = outprefix.with_suffix(outprefix.suffix + ".aa.fa")
@@ -193,19 +306,39 @@ def run_macse_refine(args):
     if result.exists() and not args.force:
         logger.warning(f"[{args.outprefix.name}] [skipping] {result} already exists. Using --force to overwrite")
         return
+    ####################################################################
 
-    # filter by minimum length -> tmp.msa.nt.fa
-    data, filtered = filter_sequences(args.input, args.outprefix, args.exclude, args.subsample, args.tree, args.min_length, args.force)
+    # REFINE ALIGNMENT ON SUBSAMPLE
 
-    # refine alignmnet -> .tmp.rmsa.nt.fa
-    if args.refine_alignment:
-        data = call_macse_refine_alignment(data, args.outprefix, args.force, args.max_iter_refine_alignment, args.verbose)
-    if args.refine_alignment_if and filtered:
-        data = call_macse_refine_alignment(data, args.outprefix, args.force, args.max_iter_refine_alignment, args.verbose)
+    # ITERATIVELY REFINE
+    data = args.input
+    while 1:
+        # FILTER TO OPTIONALLY SUBSAMPLE -> tmp.msa.nt.fa
+        data, filtered = filter_by_selection(data, args.outprefix, args.exclude, args.subsample, args.tree)
+        # mask orig input args for these
+        args.exclude = args.subsample = args.tree = None
 
-    # trim edges and export
-    data = call_macse_trim_alignment(data, args.outprefix, args.aln_trim_window_size, args.aln_trim_ends_min_coverage, args.verbose, args.force)
-    data = call_macse_export_alignment(data, args.outprefix, args.codon_int_fs, args.codon_ext_fs, args.codon_final_stop, args.codon_int_stop, args.verbose, args.force)
+        # REFINE ALIGNMENT IF ANYTHING CHANGED
+        if args.refine_alignment:
+            data = call_macse_refine_alignment(data, args.outprefix, args.max_iter_refine_alignment, args.verbose)
+        elif args.refine_alignment_if and filtered:
+            data = call_macse_refine_alignment(data, args.outprefix, args.max_iter_refine_alignment, args.verbose)
+        # TRIM EDGES
+        data = call_macse_trim_alignment(data, args.outprefix, args.aln_trim_window_size, args.aln_trim_ends_min_coverage, args.verbose)
+        # DROP MIN_LEN SAMPLES
+        # data, filtered = filter_by_min_values()
+        # DROP MIN_OV SAMPLES
+        kept, removed, filtered = filter_by_min_overlap(data, 20, 20)
+        args.subsample = kept
+        if filtered:
+            raise Exception("locus filtered")
+        for name in removed:
+            logger.info(f"removed {name} by min ov")
+        if not removed:
+            break
+
+    # WRITE TRANSLATED ALIGNMENT
+    data = call_macse_export_alignment(data, args.outprefix, args.codon_int_fs, args.codon_ext_fs, args.codon_final_stop, args.codon_int_stop, args.verbose)
 
     # clean up tmp files
     suffices = [
@@ -237,3 +370,22 @@ if __name__ == "__main__":
         logger.warning("interrupted by user")
     except Exception as exc:
         logger.error(exc)
+
+
+
+
+# # ---- example usage ----
+# fasta = "../CSUBST/HOG_20018/msa.fa"
+# seqs = parse_fasta_to_dict(fasta)
+# names, pres = present_matrix(seqs)
+# ov = overlap_matrix(pres)
+# kept, removed, success = prune_to_pairwise_min_overlap(
+#     names, ov, min_ov=50, present_counts=pres.sum(axis=1), min_keep=2
+# )
+
+# print("success:", success)
+# print("kept:", len(kept), kept[:10], "..." if len(kept) > 10 else "")
+# print("removed:")
+# for n, mn, partner in removed:
+#     print(f"  - {n} (min overlap={mn} with {partner})")
+

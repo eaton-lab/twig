@@ -167,7 +167,7 @@ def filter_by_selection(fasta: Path, outprefix: Path, exclude: List[str], subsam
     keep = {}
     for name, seq in seqs.items():
         if name in matched:
-            logger.debug(f"[{pre}] {name} excluded by user args")
+            logger.debug(f"[{pre}] {name} excluded")
             f["user"] += 1
         else:
             keep[name] = seq
@@ -301,7 +301,7 @@ def run_macse_refine(args):
     # bail out if final file exists
     result = args.outprefix.with_suffix(args.outprefix.suffix + ".nt.fa")
     if result.exists() and not args.force:
-        logger.warning(f"[{args.outprefix.name}] [skipping] {result} already exists. Using --force to overwrite")
+        logger.warning(f"[{args.input.name}] [skipping] {result} already exists. Using --force to overwrite")
         return
     ####################################################################
 
@@ -327,7 +327,7 @@ def run_macse_refine(args):
         args.subsample = kept
         for name, minov, _ in removed:
             # logger.info(f"[{args.outprefix.name}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")
-            logger.info(f"[{args.outprefix.name}] removed {name} by min-ov ({minov}) < min overlap")
+            logger.info(f"[{args.input.name}] removed {name} by min-ov ({minov}) < min overlap")
         if not success:
             raise Exception("locus filtered")
         if not removed:

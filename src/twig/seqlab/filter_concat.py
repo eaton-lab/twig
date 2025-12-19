@@ -58,11 +58,11 @@ def stream(args):
         # yield as fasta
         if len(loci) > 1000:
             fasta = "\n".join("\n".join(f">{i}\n{j}" for (i, j) in seqs.items()) for seqs in loci)
-            yield "\n".join(fasta).encode("utf-8")
+            yield "\n".join(fasta)
             loci = []
     if loci:
         fasta = "\n".join("\n".join(f">{i}\n{j}" for (i, j) in seqs.items()) for seqs in loci)
-        yield "\n".join(fasta).encode("utf-8")
+        yield "\n".join(fasta)
 
 
 def run_filter_concat(args):
@@ -76,7 +76,7 @@ def run_filter_concat(args):
         concatenate(args)
     else:
         if args.out:
-            out = args.out.open('wb')
+            out = args.out.open('w')
         else:
             out = sys.stdout
         for chunk in stream(args):

@@ -57,11 +57,11 @@ def stream(args):
 
         # yield as fasta
         if len(loci) > 1000:
-            fasta = "\n".join([f">{i}\n{j}" for (i, j) in seqs.items()] for seqs in loci)
+            fasta = "\n".join("\n".join(f">{i}\n{j}" for (i, j) in seqs.items()) for seqs in loci)
             yield "\n".join(fasta).encode("utf-8")
             loci = []
     if loci:
-        fasta = "\n".join([f">{i}\n{j}" for (i, j) in seqs.items()] for seqs in loci)
+        fasta = "\n".join("\n".join(f">{i}\n{j}" for (i, j) in seqs.items()) for seqs in loci)
         yield "\n".join(fasta).encode("utf-8")
 
 

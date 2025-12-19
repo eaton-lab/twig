@@ -19,6 +19,7 @@ $ twig concatenate -i {A,B,C}.fa -F nex > out.phy
 import sys
 from loguru import logger
 from twig.seqlab.macse_refine import parse_fasta_to_dict
+from twig.utils.logger_setup import set_log_level
 
 
 def check_args(args):
@@ -66,7 +67,9 @@ def stream(args):
 
 def run_filter_concat(args):
     """..."""
+    set_log_level(args.log_level)
     check_args(args)
+    logger.warning("RUN")
 
     # concatenate pipeline
     if args.concatenate:

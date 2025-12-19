@@ -17,6 +17,7 @@ $ twig concatenate -i {A,B,C}.fa -F nex > out.phy
 """
 
 import sys
+from loguru import logger
 from twig.seqlab.macse_refine import parse_fasta_to_dict
 
 
@@ -38,11 +39,13 @@ def stream(args):
     if args.subsample_genes:
         with args.subsample_genes.open() as hin:
             keep_set = set(i.strip() for i in hin)
+    logger.warning(f"{list(keep_set)[:10]}")
 
     # iterate over the input fastas in order
     loci = []
     for fasta in args.input:
         seqs = parse_fasta_to_dict(fasta)
+        logger.warning(f"{list(seqs.keys())}")
 
         # filter genes from fasta
         seqs = {i: j for (i, j) in seqs.items() if i in keep_set}

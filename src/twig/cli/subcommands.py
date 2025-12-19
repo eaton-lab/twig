@@ -23,7 +23,7 @@ def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
     formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
     description=dedent("""
         -------------------------------------------------------------------
-        |
+        | csubst: A simple wrapper to run and extract results from csubst
         -------------------------------------------------------------------
         |
         |
@@ -910,6 +910,65 @@ def get_parser_partition_cds(parser: ArgumentParser | None = None) -> ArgumentPa
     return parser
 
 
+def get_parser_filter_concat(parser: ArgumentParser | None = None) -> ArgumentParser:
+    """Return a parser for relabel tool.
+    """
+    KWARGS = dict(
+        prog="filter-concat",
+        usage="filter-concat [options]",
+        help="filter loci and genes, concatenate down or right, convert .fa/.phy/.nex",
+        formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=140, max_help_position=140),
+        description=dedent("""
+            -------------------------------------------------------------------
+            | filter-concat: filter loci and concatenate to .fa/.phy/.nex
+            -------------------------------------------------------------------
+            | Write a concatenated sequence file from several input fasta files.
+            | Sample names can be extracted from sequence names in files using
+            | delim args, and any locus with >1 copy per sample is excluded.
+            | The args min-samples and min-map can also be used to filter out
+            | loci that do not meet minimum sample coverage requirements.
+            |
+            -------------------------------------------------------------------
+        """),
+        epilog=dedent("""
+            Examples
+            --------
+            $ twig filter-concat -i *.fa > out.fa
+            $ twig filter-concat -i A.fa B.fa C.fa -d "|" -di 0 -F phy > out.phy
+            $ twig filter-concat -i {A,B,C}.fa -F nex > out.phy
+        """)
+    )
+    # create parser or connect as subparser to cli parser
+    if parser:
+        KWARGS['name'] = KWARGS.pop("prog")
+        parser = parser.add_parser(**KWARGS)
+    else:
+        KWARGS.pop("help")
+        parser = ArgumentParser(**KWARGS)
+
+    # path i/o args
+    parser.add_argument("-i", "--input", type=Path, metavar="path", nargs="+", required=True, help="newick or multi-newick trees file")
+    parser.add_argument("-o", "--out", type=Path, metavar="path", help="outfile name else printed to stdout")
+
+    # parsing names
+    parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip labels")
+    parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
+    parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
+
+    # filter on names
+    parser.add_argument("-I", "--imap", type=Path, metavar="path", help=r"filepath listing names to keep, or assigning (name population)")
+    parser.add_argument("-M", "--minmap", type=Path, metavar="path", help=r"filepath listing (population mincov) for filters")
+
+    # filter on tree data
+    parser.add_argument("-m", "--min-samples", type=int, metavar="int", default=4, help="min number of samples to retain the locus")
+
+    # actions
+    # parser.add_argument("-x", "--nexus", action="store_true", help="export in NEXUS format. Retains path/tree names")
+    parser.add_argument("--subsample", action="store_true", help="subsample to include only tips in imap")
+    parser.add_argument("--require-outgroups", action="store_true", help="require at least one sample mapped to 'outgroup' in imap")
+    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
+    # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
+    return parser
 
 
 # ...

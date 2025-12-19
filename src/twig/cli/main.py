@@ -34,6 +34,7 @@ DISPATCH = {
     "format-fasta": "..synteny",
     "format-gff": "..synteny",
     "genome-table": "..synteny",
+    "filter-concat": "..seqlab",
     "macse-prep": "..seqlab",
     "macse-align": "..seqlab",
     "macse-refine": "..seqlab",

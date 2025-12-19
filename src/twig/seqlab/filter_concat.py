@@ -35,18 +35,18 @@ def check_args(args):
 def stream(args):
     """Stream filtered loci to out"""
 
-    # parse set of gene headers to subsample [this can be large >1M strs]
+    # parse set of gene headers (w/o >) to subsample from
     keep_set = set()
     if args.subsample_genes:
         with args.subsample_genes.open() as hin:
-            keep_set = set(i.strip() for i in hin)
-    logger.warning(f"{list(keep_set)[:10]}")
+            keep_set = set(i.strip().lstrip(">") for i in hin)
+    logger.debug(f"loaded subsample set of {len(keep_set)} gene labels")
 
     # iterate over the input fastas in order
     loci = []
     for fasta in args.input:
         seqs = parse_fasta_to_dict(fasta)
-        logger.warning(f"{list(seqs.keys())}")
+        # logger.warning(f"{list(seqs.keys())}")
 
         # filter genes from fasta
         seqs = {i: j for (i, j) in seqs.items() if i in keep_set}
@@ -69,7 +69,7 @@ def run_filter_concat(args):
     """..."""
     set_log_level(args.log_level)
     check_args(args)
-    logger.warning("RUN")
+    # logger.warning("RUN")
 
     # concatenate pipeline
     if args.concatenate:

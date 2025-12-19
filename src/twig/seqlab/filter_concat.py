@@ -56,13 +56,13 @@ def stream(args):
             loci.append(seqs)
 
         # yield as fasta
-        if len(loci) > 1000:
+        if len(loci) > 500:
             fasta = "\n".join("\n".join(f">{i}\n{j}" for (i, j) in seqs.items()) for seqs in loci)
-            yield "\n".join(fasta)
+            yield fasta #"\n".join(fasta)
             loci = []
     if loci:
         fasta = "\n".join("\n".join(f">{i}\n{j}" for (i, j) in seqs.items()) for seqs in loci)
-        yield "\n".join(fasta)
+        yield fasta # "\n".join(fasta)
 
 
 def run_filter_concat(args):

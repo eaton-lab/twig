@@ -964,7 +964,8 @@ def get_parser_filter_concat(parser: ArgumentParser | None = None) -> ArgumentPa
 
     # actions
     # parser.add_argument("-x", "--nexus", action="store_true", help="export in NEXUS format. Retains path/tree names")
-    parser.add_argument("--subsample", action="store_true", help="subsample to include only tips in imap")
+    parser.add_argument("--subsample-genes", type=Path, metavar="path", help="subsample to include only genes in this list")
+    # parser.add_argument("--subsample", action="store_true", help="subsample to include only tips in imap")
     parser.add_argument("--require-outgroups", action="store_true", help="require at least one sample mapped to 'outgroup' in imap")
     parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
     # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")

@@ -147,12 +147,14 @@ def filter_by_selection(fasta: Path, outprefix: Path, exclude: List[str], subsam
     matched = []
     names = list(seqs)
     if exclude:
-        patterns = [re.compile(p) for p in exclude]
-        matched = [s for s in names if any(r.search(s) for r in patterns)]
+        matched = exclude
+        # patterns = [re.compile(p) for p in exclude]
+        # matched = [s for s in names if any(r.search(s) for r in patterns)]
     if subsample:
-        patterns = [re.compile(p) for p in subsample]
-        matched = [s for s in names if any(r.search(s) for r in patterns)]
-        matched = list(set(names) - set(matched))
+        matched = list(set(names) - set(subsample))
+        # patterns = [re.compile(p) for p in subsample]
+        # matched = [s for s in names if any(r.search(s) for r in patterns)]
+        # matched = list(set(names) - set(matched))
     if subsample_tree:
         matched = toytree.tree(subsample_tree).get_tip_labels()
         matched = list(set(names) - set(matched))

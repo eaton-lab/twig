@@ -183,24 +183,6 @@ def filter_by_selection(fasta: Path, outprefix: Path, exclude: List[str], subsam
     return fasta, False
 
 
-# def filter_by_min_values(fasta: Path, min_length: int, min_sample: int):
-#     """..."""
-#     seqs = parse_fasta_to_dict(fasta)
-
-#     # group sequences by isoform regex
-#     f = {"min_length": 0,}
-#     keep = {}
-#     for name, seq in seqs.items():
-
-#         # exclude if too short
-#         nbases = sum(1 for i in seq if i != "-")
-#         if nbases < min_length:
-#             logger.debug(f"[{fasta.name}] {name} excluded by min_length ({len(seq)})")
-#             f["min_length"] += 1
-#             continue
-#         keep[name] = seq
-
-
 def filter_by_min_overlap(fasta: Path, min_ov: int, min_samples: int):
     seqs = parse_fasta_to_dict(fasta)
     names, arr = present_matrix(seqs)
@@ -324,9 +306,8 @@ def run_macse_refine(args):
         data = call_macse_trim_alignment(data, args.outprefix, args.aln_trim_window_size, args.aln_trim_ends_min_coverage, args.verbose)
         # DROP MIN_OV SAMPLES
         kept, removed, success = filter_by_min_overlap(data, args.min_overlap, args.min_samples)
-        args.subsample = kept
+        args.exclude = [i[0] for i in removed]
         for name, minov, _ in removed:
-            # logger.info(f"[{args.outprefix.name}] {len(seqs)} seqs -> {len(keep)} seqs, filtered by [min_length={f['min_length']}, user={f['user']}])")
             logger.info(f"[{args.input.name}] removed {name} by min-ov ({minov}) < min overlap")
         if not success:
             raise Exception("locus filtered")

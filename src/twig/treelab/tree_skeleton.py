@@ -38,7 +38,11 @@ def run_tree_skeleton(args):
                 sptree.mod.add_internal_node_and_child(gname, name=gname, parent_name="", inplace=True)
             elif idx > 1:
                 sptree.mod.add_sister_node(gname, name=gname, inplace=True)
-    return sptree
+
+    if args.out:
+        sptree.write(args.out)
+    else:
+        sptree.write()
 
 
 def main():

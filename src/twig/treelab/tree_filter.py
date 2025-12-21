@@ -201,9 +201,13 @@ def run_tree_filter(args):
             continue
 
         # relabel
-        if args.relabel_imap or args.relabel_delim:
+        if args.relabel_delim:
             for node in tree[:tree.ntips]:
                 node.name = node.delim
+        if args.relabel_imap:
+            for node in tree[:tree.ntips]:
+                node.name = node.imap
+
         # write
         ntrees_end += 1
         if args.out:

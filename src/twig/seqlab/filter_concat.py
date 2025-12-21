@@ -65,6 +65,10 @@ def stream(args):
         yield fasta + "\n"
 
 
+def concatenate(args):
+    raise NotImplementedError("TODO")
+
+
 def run_filter_concat(args):
     """..."""
     set_log_level(args.log_level)

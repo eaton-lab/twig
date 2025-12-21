@@ -33,65 +33,9 @@ a result of different annotation sources...
 
 import sys
 import gzip
-import textwrap
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
 from loguru import logger
 import pandas as pd
-
-
-def get_parser_genome_table(parser: ArgumentParser | None = None) -> ArgumentParser:
-    """Return a parser for relabel tool.
-    """
-    kwargs = dict(
-        prog="genome-table",
-        usage="twig genome-table FA GFF [options]",
-        help="write table with chrom/scaff [names lengths ngenes]",
-        formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
-        description=textwrap.dedent("""
-            -------------------------------------------------------------------
-            | genome-table: get table of chrom/scaff [names, lengths, ngenes] |
-            -------------------------------------------------------------------
-            | Parses the genome fasta (and annotation) files to extract       |
-            | scaffold names, lengths, and gene numbers and write as a tsv    |
-            | to stdout. This table is useful for downstream analysis such as |
-            | dotplots and other synteny analyses. If an annotation file is   |
-            | not provided then only names and lengths are extracted. Options |
-            | can be used to sort and/or subselect scaffolds for inclusion.   |
-            -------------------------------------------------------------------
-        """),
-        epilog=textwrap.dedent("""
-            Examples
-            --------
-            $ genome-table FA > genome.info.tsv            
-            $ genome-table FA GFF > genome.info.tsv
-            $ genome-table FA GFF --sort-len --subset 8 > genome.info.tsv
-            $ genome-table FA GFF --subset-names chr1 chr2 > genome.info.tsv            
-        """)
-    )
-
-    # create parser or connect as subparser to cli parser
-    if parser:
-        kwargs['name'] = kwargs.pop("prog")
-        parser = parser.add_parser(**kwargs)
-    else:
-        kwargs.pop("help")
-        parser = ArgumentParser(**kwargs)
-
-    # add arguments
-    parser.add_argument("genome", type=Path, help="fasta genome sequence (can be .gz)")
-    parser.add_argument("annotation", type=Path, nargs="?", default=None, help="gff annotation file (optional; can be .gz)")
-    sort_options = parser.add_mutually_exclusive_group()
-    sort_options.add_argument("--sort-alpha", action="store_true", help="sort chromosomes by name alphanumerically")
-    sort_options.add_argument("--sort-len", action="store_true", help="sort chromosomes by length")
-    # parser.add_argument("--subset", type=int, metavar="int", default=None, help="write only the first N scaffolds after sorting")
-    sub_options = parser.add_mutually_exclusive_group()    
-    sub_options.add_argument("--subset", type=int, metavar="int", default=None, help="subselect the first N scaffolds after optional sorting")
-    sub_options.add_argument("--subset-idx", type=int, metavar="int", nargs="+", help="subselect one or more scaffolds by 1-based index after optional sorting")
-    sub_options.add_argument("--subset-names", type=str, metavar="str", nargs="+", help="subselect one or more scaffolds by name")
-
-    parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "EXCEPTION"], metavar="level", default="INFO", help="stderr logging level (DEBUG, INFO, WARNING, ERROR; default=INFO)")
-    return parser
 
 
 def get_chrom_names_and_lengths(genome: Path) -> dict[str, int]:

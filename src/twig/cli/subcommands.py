@@ -13,6 +13,7 @@ ISOFORM_REGEX_DEFAULT = r"^([^|]+)\|.*?__(.+?)_i\d+"
 
 
 
+
 def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
     """Return a parser for relabel tool.
     """
@@ -733,11 +734,11 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     parser.add_argument("-rd", "--relabel-delim", action="store_true", help="relabel tips by their delim parsed names")
     parser.add_argument("-ri", "--relabel-imap", action="store_true", help="relabel tips to their imap mapped names")
     # parser.add_argument("-x", "--nexus", action="store_true", help="export in NEXUS format. Retains path/tree names")
-    parser.add_argument("--subsample", action="store_true", help="subsample to include only tips in imap")
-    parser.add_argument("--exclude-outliers", action="store_true", help="exclude tips with outlier edge lengths (>ei or >eo)")
-    parser.add_argument("--require-outgroups", action="store_true", help="require at least one 'outgroup' sample")
-    parser.add_argument("--collapse-outgroups", action="store_true", help="keep only the most distant 'outgroup' (assumes rooted trees)")
-
+    parser.add_argument("-S", "--subsample", action="store_true", help="subsample to include only tips in imap")
+    parser.add_argument("-E", "--exclude-outliers", action="store_true", help="exclude tips with outlier edge lengths (>ei or >eo)")
+    parser.add_argument("-R", "--require-outgroups", action="store_true", help="require at least one 'outgroup' sample")
+    parser.add_argument("-C", "--collapse-outgroups", action="store_true", help="keep only the most distant 'outgroup' (assumes rooted trees)")
+    parser.add_argument("-O", "--outgroups", type=Path, metavar="path", help=r"path listing outgroups for -R (overrides IMAP group 'outgroup')")
     parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
     # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
     return parser

@@ -9,9 +9,6 @@ among others.
 >>> tree-filter -t TREES -o OUT -I IMAP -M MINMAP
 >>> tree-filter -t TREES -o OUT -m 20
 
-TODO
-----
-Work over a generator of trees
 """
 
 import sys
@@ -85,9 +82,9 @@ def exclude_long_tips(tree, ingroup_z, outgroup_z):
     return tree
 
 
-def collapse_and_require_outgroups(tree, imap, require_outgroups, collapse_outgroups):
+def collapse_and_require_outgroups(tree, outgroups, require_outgroups, collapse_outgroups):
     # get the delim labels from imap that are in the tree
-    onodes = [i for i in tree[:tree.ntips] if i.imap == "outgroup"]
+    onodes = [i for i in tree[:tree.ntips] if i in outgroups]
 
     # return options for no outgroups present
     if not onodes:
@@ -139,12 +136,20 @@ def run_tree_filter(args):
                 pop, mincov, *other = line.strip().split()
                 minmap[pop] = mincov
 
+    # get list of outgroups from 'outgroups' or imap
+    if args.outgroups:
+        with args.outgroups.open() as hin:
+            outgroups = [i.strip().split()[0] for i in hin]
+    else:
+        outgroups = [i for (i, j) in imap.items() if j == "outgroup"]
+    logger.debug(f"outgroups = {outgroups}")
+
     # check required args
     if args.collapse_outgroups or args.require_outgroups:
-        if not imap:
-            raise ValueError("must provide an --imap when using --collapse-outgroups or --require-outgroups")
-        if "outgroup" not in imap.values():
-            raise ValueError("imap must contain a population named 'outgroup' when using --collapse-outgroups or --require-outgroups")
+        if not outgroups:
+            raise ValueError("must designate outgroups in --imap or --outgroups to use --collapse-outgroups or --require-outgroups")
+        # if "outgroup" not in imap.values():
+        #     raise ValueError("imap must contain a population named 'outgroup' when using --collapse-outgroups or --require-outgroups")
 
     if not args.max_copies:
         args.max_copies = float('inf')
@@ -182,7 +187,7 @@ def run_tree_filter(args):
             npost = tree.ntips
             outlier_tips_removed += npre - npost
         if args.collapse_outgroups or args.require_outgroups:
-            tree, filt = collapse_and_require_outgroups(tree, imap, args.require_outgroups, args.collapse_outgroups)
+            tree, filt = collapse_and_require_outgroups(tree, outgroups, args.require_outgroups, args.collapse_outgroups)
             if filt:
                 filters['require-outgroup'] += 1
                 continue

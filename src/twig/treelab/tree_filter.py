@@ -84,7 +84,7 @@ def exclude_long_tips(tree, ingroup_z, outgroup_z):
 
 def collapse_and_require_outgroups(tree, outgroups, require_outgroups, collapse_outgroups):
     # get the delim labels from imap that are in the tree
-    onodes = [i for i in tree[:tree.ntips] if i in outgroups]
+    onodes = [i for i in tree[:tree.ntips] if i.delim in outgroups]
 
     # return options for no outgroups present
     if not onodes:

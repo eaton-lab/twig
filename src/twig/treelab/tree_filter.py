@@ -207,6 +207,8 @@ def run_tree_filter(args):
         if args.relabel_imap:
             for node in tree[:tree.ntips]:
                 node.name = node.imap
+                if node.name is None:
+                    logger.warning(f"node {node.name} ({node.delim}) not in imap")
 
         # write
         ntrees_end += 1

@@ -842,8 +842,8 @@ def get_parser_tree_skeleton(parser: ArgumentParser | None = None) -> ArgumentPa
         epilog=dedent("""
             Examples
             --------
-            $ twig tree-skeleton -g NWK1 -s NWK2 > NWK3
-            $ twig tree-skeleton -g NWK1 -s NWK2 -d "|" -di 0 > NWK3
+            $ twig tree-skeleton -i NWK1 -s NWK2 > NWK3
+            $ twig tree-skeleton -i NWK1 -s NWK2 -d "|" -di 0 > NWK3
         """)
     )
     # create parser or connect as subparser to cli parser
@@ -855,7 +855,7 @@ def get_parser_tree_skeleton(parser: ArgumentParser | None = None) -> ArgumentPa
         parser = ArgumentParser(**KWARGS)
 
     # path i/o args
-    parser.add_argument("-g", "--gtree", type=Path, metavar="path", required=True, help="newick or multi-newick gene trees file")
+    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="newick or multi-newick gene trees file")
     parser.add_argument("-s", "--sptree", type=Path, metavar="path", required=True, help="newick species tree file")
     parser.add_argument("-o", "--out", type=Path, metavar="path", help="outfile name else printed to stdout")
 

@@ -33,11 +33,11 @@ def run_tree_skeleton(args):
                 gname = sname
             # set labels to existing or new nodes depending on copy number
             if idx == 0:
-                sptree.get_nodes(gname)[0].name = gname
+                sptree.get_nodes(sname)[0].name = gname
             elif idx == 1:
-                sptree.mod.add_internal_node_and_child(gname, name=gname, parent_name="", inplace=True)
+                sptree.mod.add_internal_node_and_child(sname, name=gname, parent_name="", inplace=True)
             elif idx > 1:
-                sptree.mod.add_sister_node(gname, name=gname, inplace=True)
+                sptree.mod.add_sister_node(sname, name=gname, inplace=True)
 
     if args.out:
         sptree.write(args.out)

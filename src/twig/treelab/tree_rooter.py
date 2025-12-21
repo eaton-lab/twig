@@ -139,6 +139,7 @@ def run_tree_rooter(args):
 
 
 def main():
+    from twig.cli.subcommands import get_parser_tree_rooter
     parser = get_parser_tree_rooter()
     args = parser.parse_args()
     run_tree_rooter(args)

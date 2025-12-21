@@ -13,7 +13,7 @@ def run_tree_skeleton(args):
     """The names in sptree should match those parsed from the gtree
     using delim/idx/join.
     """
-    gtree = tree(args.gtree)
+    gtree = tree(args.input)
     sptree = tree(args.sptree)
 
     # map {spp-label: [g-label, ...], ...}
@@ -50,10 +50,4 @@ def main():
 
 
 if __name__ == "__main__":
-
-    G = "..."
-    S = "..."
-    D = "|"
-    I = [0]
-    J = ""
-    ...
+    pass

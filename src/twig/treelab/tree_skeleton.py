@@ -5,7 +5,7 @@ gene duplicates ... grouped as sister.
 
 """
 
-
+import sys
 from loguru import logger
 from toytree import tree
 from twig.utils.logger_setup import set_log_level
@@ -48,12 +48,11 @@ def run_tree_skeleton(args):
             sptree.mod.add_internal_node_and_child(node, name=sname if args.relabel_delim else gnames[1], parent_name="", inplace=True)
             sptree.mod.add_sister_node(node, name=gnames[2], inplace=True)
             # sptree.mod.add_internal_node_and_child(node, name=sname if args.relabel_delim else gnames[2], parent_name="", inplace=True)
-    logger.debug("WHAT")
-    print(sptree.write())
+
     if args.out:
         sptree.write(args.out)
     else:
-        sptree.write()
+        print(sptree.write(None), file=sys.stdout)
 
 
 def main():

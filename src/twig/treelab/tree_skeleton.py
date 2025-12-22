@@ -48,7 +48,7 @@ def run_tree_skeleton(args):
             node.name = sname if args.relabel_delim else gnames[0]
             sptree.mod.add_internal_node_and_child(node, name=sname if args.relabel_delim else gnames[1], parent_name="", inplace=True)
         else:
-            logger.debug(f"two copies of {sname}")
+            logger.debug(f"{len(gnames)} copies of {sname}")
             node.name = sname if args.relabel_delim else gnames[0]
             sptree.mod.add_internal_node_and_child(node, name=sname if args.relabel_delim else gnames[1], parent_name="", inplace=True)
             for sidx in range(2, len(gnames)):

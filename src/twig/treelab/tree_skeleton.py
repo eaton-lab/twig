@@ -26,9 +26,9 @@ def run_tree_skeleton(args):
         parts = tip.split(args.delim)
         name = args.delim_join.join([parts[i] for i in args.delim_idxs])
         if name in copies:
-            copies[name].append(name)
+            copies[name].append(tip)
         else:
-            copies[name] = [name]
+            copies[name] = [tip]
 
     # iterate over species in the species tree
     for sname in copies:
@@ -47,7 +47,6 @@ def run_tree_skeleton(args):
             node.name = sname if args.relabel_delim else gnames[0]
             sptree.mod.add_internal_node_and_child(node, name=sname if args.relabel_delim else gnames[1], parent_name="", inplace=True)
             sptree.mod.add_sister_node(node, name=gnames[2], inplace=True)
-            # sptree.mod.add_internal_node_and_child(node, name=sname if args.relabel_delim else gnames[2], parent_name="", inplace=True)
 
     if args.out:
         sptree.write(args.out)

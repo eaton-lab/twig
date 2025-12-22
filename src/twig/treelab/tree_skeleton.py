@@ -30,7 +30,10 @@ def run_tree_skeleton(args):
         else:
             copies[name] = [tip]
 
-    # iterate over species in the species tree
+    # prune to only keep edges connecting the tips in 'copies'
+    sptree = sptree.mod.prune(*list(copies))
+
+    # iterate over tips in species tree adding extra copies to tips as needed
     for sname in copies:
 
         node = sptree.get_nodes(sname)[0]
@@ -48,6 +51,7 @@ def run_tree_skeleton(args):
             sptree.mod.add_internal_node_and_child(node, name=sname if args.relabel_delim else gnames[1], parent_name="", inplace=True)
             sptree.mod.add_sister_node(node, name=gnames[2], inplace=True)
 
+    # write to file or stdout
     if args.out:
         sptree.write(args.out)
     else:

@@ -145,18 +145,15 @@ def run_tree_rooter(args):
         print(f"'{key}': {count[key]}", file=sys.stderr)
 
     # select return set
+    tset = utrees if args.not_rooted else rtrees
     if args.not_rooted:
-        newicks = "\n".join(i.write() for i in utrees)
-    else:
-        newicks = "\n".join(i.write() for i in rtrees)        
-
-    # print results
-    if args.out:
-        with args.out.open("w") as hout:
-            hout.write(newicks)
-    else:
-        print(newicks, file=sys.stdout)
-
+        if args.out:
+            with open(args.out, 'w') as hout:
+                for tree in tset:
+                    hout.write(tree.write() + "\n")
+        else:
+            for tree in utrees:
+                sys.stdout.write(tree.write())
 
 
 def main():

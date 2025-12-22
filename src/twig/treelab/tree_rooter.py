@@ -87,14 +87,16 @@ def run_tree_rooter(args):
                     # get tipnodes in gtree that are in rootclade
                     onodes = [i for i in tree[:tree.ntips] if i.delim in rc]
                     if not onodes:
+                        logger.debug(f"tree cannot be rooted on root clade {rc}")
                         continue
                     # try rooting the tree on a set of rootclade tips
                     tree = tree.root(*onodes)
 
                     # validate that ingroup is monophyletic (i.e., there are not
                     # other outgroup samples nested in it).
-                    inodes = [i for i in tree[:tree.ntips] if i.delim in outgroups]
+                    inodes = [i for i in tree[:tree.ntips] if i.delim not in outgroups]
                     if not tree.is_monophyletic(*inodes):
+                        logger.debug("rooted tree does not contain monophlyetic ingroup")
                         continue
 
                     # success

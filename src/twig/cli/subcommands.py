@@ -754,11 +754,16 @@ def get_parser_tree_rooter(parser: ArgumentParser | None = None) -> ArgumentPars
         formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=140, max_help_position=140),
         description=dedent("""
             -------------------------------------------------------------------
-            | tree-rooter: ...
+            | tree-rooter: re-root gene trees by outgroups, species tree or MAD
             -------------------------------------------------------------------
-            | Root trees by designating an outgroup, or a set of potential
-            | outgroups in the case that a set of trees may or may not include
-            | a single outgroup. The ...
+            | Root trees by designating one or more outgroups. If a species tree
+            | is provided an iterative process is used to try to root on ordered
+            | outgroup subclades. If the ingroup (all non-outgroup samples) is
+            | not monophyletic after attempted rooting, the tree is not returned.
+            | Stats are printed to stderr. Input can be a multinewick with many
+            | trees in it. Use -x to return only the trees that could not be
+            | rooted, which can be rooted by alternative methods, like --mad,
+            | or manually.
             -------------------------------------------------------------------
         """),
         epilog=dedent("""
@@ -812,9 +817,10 @@ def get_parser_tree_rooter(parser: ArgumentParser | None = None) -> ArgumentPars
     # rooting options
     parser.add_argument("-s", "--sptree", type=Path, metavar="path", help="rooted species tree")
     parser.add_argument("-r", "--outgroups", type=str, metavar="str", nargs="+", help="list outgroup tip labels")
-    parser.add_argument("-I", "--imap", type=Path, metavar="path", help="get outgroup assignment from tabular imap file listing 'sample\tpopulation'")
+    parser.add_argument("-I", "--imap", type=Path, metavar="path", help="get outgroup assignment from tabular imap file w/ rows '{sample}\toutgroup'")
 
     # return option
+    # parser.add_argument("-a", "--allow", action="store_true", help="allow ")
     parser.add_argument("-m", "--mad", action="store_true", help="use minimal ancestor deviation to estimate root of remaining unrooted trees")
     parser.add_argument("-x", "--not-rooted", action="store_true", help="return the trees that could not be rooted given the options")
     parser.add_argument("-rd", "--relabel-delim", action="store_true", help="relabel tips by their delim parsed names")

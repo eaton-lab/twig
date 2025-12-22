@@ -84,12 +84,24 @@ def run_tree_rooter(args):
             rooted = False
             for rc in root_clades:
                 try:
+                    # get tipnodes in gtree that are in rootclade
                     onodes = [i for i in tree[:tree.ntips] if i.delim in rc]
                     if not onodes:
                         continue
+                    # try rooting the tree on a set of rootclade tips
                     tree = tree.root(*onodes)
+
+                    # validate that ingroup is monophyletic (i.e., there are not
+                    # other outgroup samples nested in it).
+                    inodes = [i for i in tree[:tree.ntips] if i.delim in outgroups]
+                    if not tree.is_monophyletic(*inodes):
+                        continue
+
+                    # success
                     rooted = True
                     break
+
+                # errors that arise on bad .root() options
                 except (AttributeError, ValueError):
                     pass
                 except toytree.utils.ToytreeError:

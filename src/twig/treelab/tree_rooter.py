@@ -146,14 +146,13 @@ def run_tree_rooter(args):
 
     # select return set
     tset = utrees if args.not_rooted else rtrees
-    if args.not_rooted:
-        if args.out:
-            with open(args.out, 'w') as hout:
-                for tree in tset:
-                    hout.write(tree.write() + "\n")
-        else:
-            for tree in utrees:
-                sys.stdout.write(tree.write())
+    if args.out:
+        with open(args.out, 'w') as hout:
+            for tree in tset:
+                hout.write(tree.write() + "\n")
+    else:
+        for tree in utrees:
+            sys.stdout.write(tree.write())
 
 
 def main():

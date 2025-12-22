@@ -83,6 +83,7 @@ def run_tree_rooter(args):
             tree = toytree.tree(nwk, internal_labels="name")
             tree = set_delim_labels(tree, args.delim, args.delim_idxs, args.delim_join)
             rooted = False
+            ntips = tree.ntips
             for rc in root_clades:
                 try:
                     # get tipnodes in gtree that are in rootclade
@@ -91,12 +92,12 @@ def run_tree_rooter(args):
                         logger.debug(f"tree cannot be rooted on root clade {rc}")
                         continue
                     # try rooting the tree on a set of rootclade tips
-                    tree = tree.root(*onodes)
+                    _tree = tree.root(*onodes)
 
                     # validate that ingroup is monophyletic (i.e., there are not
                     # other outgroup samples nested in it).
-                    inodes = [i for i in tree[:tree.ntips] if i.delim not in outgroups]
-                    if not tree.is_monophyletic(*inodes):
+                    inodes = [i for i in _tree[:_tree.ntips] if i.delim not in outgroups]
+                    if not _tree.is_monophyletic(*inodes):
                         logger.debug("rooted tree does not contain monophlyetic ingroup")
                         continue
 
@@ -109,6 +110,11 @@ def run_tree_rooter(args):
                     pass
                 except toytree.utils.ToytreeError:
                     pass
+
+            # accepted rooted tree
+            tree = _tree
+            if tree.ntips != ntips:
+                logger.warning(f"ntips changed, {ntips}->{tree.ntips}, {nwk}")
 
             # set labels on tree
             if args.relabel_delim:

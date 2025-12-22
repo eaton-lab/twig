@@ -825,7 +825,7 @@ def get_parser_tree_rooter(parser: ArgumentParser | None = None) -> ArgumentPars
     parser.add_argument("-x", "--not-rooted", action="store_true", help="return the trees that could not be rooted given the options")
     parser.add_argument("-rd", "--relabel-delim", action="store_true", help="relabel tips by their delim parsed names")
     # logging
-    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="CRITICAL", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
+    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
     # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
     return parser
 

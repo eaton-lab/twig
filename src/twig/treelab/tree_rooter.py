@@ -102,6 +102,7 @@ def run_tree_rooter(args):
                         continue
 
                     # success
+                    tree = _tree
                     rooted = True
                     break
 
@@ -112,7 +113,6 @@ def run_tree_rooter(args):
                     pass
 
             # accepted rooted tree
-            tree = _tree
             if tree.ntips != ntips:
                 logger.warning(f"ntips changed, {ntips}->{tree.ntips}, {nwk}")
 

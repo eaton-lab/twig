@@ -194,7 +194,7 @@ def run_tree_filter(args):
 
         # filters
         if tree.ntips < args.min_tips:
-            logger.debug(f"tree filtered ntips={tree.ntips}; nwk={tree.write()}")
+            # logger.debug(f"tree filtered ntips={tree.ntips}; nwk={tree.write()}")
             filters["min-tips"] += 1
             continue
         if filter_by_max_copies(tree, args.max_copies):

@@ -83,7 +83,8 @@ def run_tree_rooter(args):
             tree = toytree.tree(nwk, internal_labels="name")
             tree = set_delim_labels(tree, args.delim, args.delim_idxs, args.delim_join)
             rooted = False
-            ntips = tree.ntips
+
+            # iteratively attempt to root on each 'root_clade' option
             for rc in root_clades:
                 try:
                     # get tipnodes in gtree that are in rootclade
@@ -111,10 +112,6 @@ def run_tree_rooter(args):
                     pass
                 except toytree.utils.ToytreeError:
                     pass
-
-            # accepted rooted tree
-            if tree.ntips != ntips:
-                logger.warning(f"ntips changed, {ntips}->{tree.ntips}, {nwk}")
 
             # set labels on tree
             if args.relabel_delim:

@@ -17,18 +17,20 @@ def run_tree_skeleton(args):
     """
     set_log_level(args.log_level)
 
-    gtree = tree(args.input)
-    sptree = tree(args.sptree)
+    gtree = tree(args.input, internal_labels="name")
+    sptree = tree(args.sptree, internal_labels="name")
 
     # map {spp-label: [g-label, ...], ...}
     copies = {}
     for tip in gtree.get_tip_labels():
         parts = tip.split(args.delim)
+        logger.debug(parts)
         name = args.delim_join.join([parts[i] for i in args.delim_idxs])
+        logger.debug(name)
         if name in copies:
-            copies[name].append(tip)
+            copies[name].append(name)
         else:
-            copies[name] = [tip]
+            copies[name] = [name]
     logger.debug(copies)
 
     # iterate over species in the species tree

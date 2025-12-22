@@ -59,6 +59,7 @@ def run_tree_rooter(args):
         outgroups = [i for (i, j) in imap.items() if j == "outgroup"]
     else:
         outgroups = args.outgroups
+    assert outgroups, "no outgroups specified with -r or -I"
 
     # get root_clades from sptree or outgroups
     if args.sptree:
@@ -67,7 +68,7 @@ def run_tree_rooter(args):
     else:
         root_clades = [i.split(",") for i in outgroups] if outgroups else []
     logger.debug(f"ordered rooting clades: {root_clades}")
-    assert root_clades, "no root clades found"
+    assert root_clades, "no clades in sptree match to specified outgroups. Check delim args?"
 
     # track success
     count = {"rerooted": 0, "not-rerooted": 0}

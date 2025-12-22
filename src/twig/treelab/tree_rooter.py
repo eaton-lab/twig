@@ -151,8 +151,8 @@ def run_tree_rooter(args):
             for tree in tset:
                 hout.write(tree.write() + "\n")
     else:
-        for tree in utrees:
-            sys.stdout.write(tree.write())
+        for tree in tset:
+            sys.stdout.write(tree.write() + "\n")
 
 
 def main():

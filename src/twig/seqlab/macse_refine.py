@@ -17,14 +17,13 @@ It will produce:
 
 from __future__ import annotations
 from typing import Dict, List, Tuple
-import re
 import sys
 import subprocess
 from pathlib import Path
 from loguru import logger
 import toytree
 import numpy as np
-from twig.utils.logger_setup import set_log_level
+from twig.utils import set_log_level, TwigError
 
 BIN = Path(sys.prefix) / "bin"
 BIN_MACSE = str(BIN / "macse")
@@ -312,7 +311,7 @@ def run_macse_refine(args):
         for name, minov, _ in removed:
             logger.info(f"[{args.input.name}] removed {name} by min-ov ({minov}) < min overlap")
         if not success:
-            raise Exception("locus filtered")
+            raise TwigError("locus filtered")
         if not removed:
             break
 

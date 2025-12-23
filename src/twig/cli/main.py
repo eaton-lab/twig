@@ -16,6 +16,7 @@ from loguru import logger
 import importlib
 from . import subcommands
 from twig import __version__ as VERSION
+from twig.utils import TwigError
 
 
 THREAD_ENV_VARS = (
@@ -112,6 +113,8 @@ def main(cmd: Optional[str] = None) -> int:
             return 0
         except KeyboardInterrupt:
             logger.warning("interrupted by user")
+        except TwigError as exc:
+            logger.error(exc)
         except Exception as exc:
             logger.error(exc)
             raise

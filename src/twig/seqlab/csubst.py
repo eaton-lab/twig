@@ -10,7 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 from loguru import logger
-from twig.utils.logger_setup import set_log_level
+from twig.utils import set_log_level, TwigError
+
 
 INSTALL_MSG = """\
 A 'csubst' binary was not found in a conda env named '{env}'.
@@ -64,13 +65,8 @@ def run_csubst(args):
     args.tree = args.tree.expanduser().absolute()
     args.foreground = args.foreground.expanduser().absolute()
     for argpath in [args.alignment, args.tree, args.foreground]:
-        assert argpath.exists(), f"path '{argpath}' does not exist"
-
-    # bail out if final file exists
-    # result = args.outdir / (args.prefix + ".msa.nt.fa")
-    # if result.exists() and not args.force:
-    #     logger.info(f"[{args.prefix}] [skipping] {result} already exists")
-    #     return 0
+        if not argpath.exists():
+            raise TwigError(f"path '{argpath}' does not exist")
 
     # run it
     call_csubst(args)

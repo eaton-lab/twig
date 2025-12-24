@@ -50,7 +50,7 @@ def run_csubst(args):
     args.workdir = args.outdir
     if args.workdir.exists() and args.workdir.is_dir():
         if not args.force:
-            raise ValueError(f"path exists at {args.workdir}/. Use --force to overwrite.")
+            raise TwigError(f"path exists at {args.workdir}/. Use --force to overwrite.")
         else:
             # check if it contains only csubst files
             for item in args.workdir.iterdir():

@@ -104,6 +104,10 @@ def call_csubst(args):
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=args.workdir)
     if proc.returncode:
         raise Exception(proc.stderr)
+    logfile = args.workdir / 'csubst_log.txt'
+    logger.info(f"[{args.alignment.name}] csubst log written to {logfile}")
+    with open(logfile, 'w') as out:
+        out.write(proc.stderr)
         # raise subprocess.CalledProcessError(cmd, proc.stderr)
     # (outdir / f"{prefix}.tmp.msa.aa.fa").unlink()
     # return proc.returncode

@@ -110,6 +110,8 @@ def call_csubst(args):
     logfile = args.workdir / 'csubst_log.txt'
     logger.info(f"[{args.alignment.name}] csubst log written to {logfile}")
     with open(logfile, 'w') as out:
+        out.write(proc.stdout)
+        out.write("\n-------\n")
         out.write(proc.stderr)
 
     # raise on error

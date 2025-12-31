@@ -58,7 +58,10 @@ def run_csubst(args):
             for item in args.workdir.iterdir():
                 if item.is_file() and (item.name.startswith("csubst") or item.name.startswith("tmp.csubst")):
                     item.unlink()
-            args.workdir.rmdir()
+            try:
+                args.workdir.rmdir()
+            except OSError:
+                pass
             logger.info(f"removed existing results in {args.workdir}")
     args.workdir.mkdir(exist_ok=True)
 

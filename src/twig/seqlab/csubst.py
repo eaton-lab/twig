@@ -8,6 +8,7 @@ conda install csubst 'iqtree<3' -c bioconda
 
 import subprocess
 import sys
+import shutil
 from pathlib import Path
 from loguru import logger
 from twig.utils import set_log_level, TwigError
@@ -67,6 +68,11 @@ def run_csubst(args):
     for argpath in [args.alignment, args.tree, args.foreground]:
         if not argpath.exists():
             raise TwigError(f"path '{argpath}' does not exist")
+
+    # copy the tree file into the results dir and use that one
+    dst = args.workdir / "csubst_alignment.fa"
+    shutil.copy2(args.alignment, dst)
+    args.alignment = dst
 
     # run it
     call_csubst(args)

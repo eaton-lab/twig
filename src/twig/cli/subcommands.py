@@ -56,7 +56,7 @@ def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
     # parser.add_argument("-p", "--prefix", type=str, metavar="str", help="optional outfile prefix. If None the cds filename is used")
 
     parser.add_argument("-m", "--max-arity", type=int, metavar="int", default=2, help="max combinatorial number of branches (K) [%(default)s]")
-    parser.add_argument("-u", "--exhaustive-until", type=int, metavar="int", default=1, help="perform exhaustive (non-heuristic) search up N branch combs [%(default)s]")
+    parser.add_argument("-u", "--exhaustive-until", type=int, metavar="int", default=2, help="perform exhaustive (non-heuristic) search up N branch combs [%(default)s]")
     parser.add_argument("-c", "--cutoff-stat", type=str, metavar="str", default="OCNany2spe,2.0|omegaCany2spe,5.0", help="Cutoff stats for searching higher-order branch combs [%(default)s]")
 
     parser.add_argument("-b", "--foreground-table", action="store_true", help="foreground file is a table (fg_format=2)")
@@ -520,11 +520,12 @@ def get_parser_macse_align(parser: ArgumentParser | None = None) -> ArgumentPars
         formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
         description=dedent("""
             -------------------------------------------------------------------
-            | macse-align: ...
+            | macse-align: run macse joint cds/aa alignment
             -------------------------------------------------------------------
-            | Macse ...
-            | This implements `macse -prog AlignSequences` and
-            | additional steps to ...
+            | Calls `macse -prog AlignSequences` and writes cds alignment
+            | to {outpath}. This is an intermediate file. You should next
+            | run `twig macse-refine` to trim/filter/convert to write final
+            | cds and aa alignments.
             -------------------------------------------------------------------
         """),
         epilog=dedent("""
@@ -568,19 +569,18 @@ def get_parser_macse_refine(parser: ArgumentParser | None = None) -> ArgumentPar
     KWARGS = dict(
         prog="macse-refine",
         usage="macse-refine -i CDS [options]",
-        help="...",
+        help="trim/filter/convert alignments",
         formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
         description=dedent("""
             -------------------------------------------------------------------
             | macse-refine: CDS/AA jointly and filter low homology seqs
             -------------------------------------------------------------------
             | Macse codon-aware alignment of CDS and AA sequences. This method
-            | also includes options to filter and trim sequences to remove low
-            | homology fragments or sequences; sequences that are too short;
-            | and extra isoforms. If a result with -p PREFIX name exists in -o
-            | OUTDIR it will be skipped, allowing for easy checkpointing to
-            | run in parallel on a large set of sequences and restart if
-            | interrupted.
+            | takes an alignment from `twig macse-refine` and can subsample/
+            | filter to remove selected samples, or those with too little
+            | overlap with others (-mo), then refine the alignment, and write
+            | final alignments with optional conversion of frameshift and stop
+            | codons.
             -------------------------------------------------------------------
         """),
         epilog=dedent("""
@@ -981,4 +981,3 @@ def get_parser_filter_concat(parser: ArgumentParser | None = None) -> ArgumentPa
 
 
 # ...
-

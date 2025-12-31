@@ -49,6 +49,7 @@ def run_csubst(args):
 
     # check to create workdir
     args.workdir = args.outdir
+    args.workdir = args.workdir.expanduser().absolute()
     if args.workdir.exists() and args.workdir.is_dir():
         if not args.force:
             raise TwigError(f"path exists at {args.workdir}/. Use --force to overwrite.")

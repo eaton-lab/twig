@@ -80,7 +80,7 @@ def run_tree_rooter(args):
         for tidx, nwk in enumerate(datain.readlines()):
             if not nwk:
                 continue
-            tree = toytree.tree(nwk, internal_labels="name")
+            tree = toytree.tree(nwk)#, internal_labels="name")
             tree = set_delim_labels(tree, args.delim, args.delim_idxs, args.delim_join)
             rooted = False
 

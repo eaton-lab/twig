@@ -83,6 +83,7 @@ def exclude_long_tips(tree, ingroup_z, outgroup_z):
 
 
 def collapse_and_require_outgroups(tree, outgroups, require_outgroups, collapse_outgroups):
+    """Return Tree and boolean where True means it failed to pass"""
     # get the delim labels from imap that are in the tree
     onodes = [i for i in tree[:tree.ntips] if i.delim in outgroups]
 
@@ -102,6 +103,15 @@ def collapse_and_require_outgroups(tree, outgroups, require_outgroups, collapse_
     onodes = sorted(onodes, key=lambda x: x.idx)
     tree.mod.drop_tips(*onodes[1:], inplace=True)
     return tree, False
+
+
+def collapse_by_min_support_and_require_min_splits(tree, min_support: int, min_splits: int):
+    """Return tree with low support nodes collapsed and boolean of whether min_splits are still present"""
+    tree = tree.mod.collapse_nodes(min_support=min_support)
+    n_internal_edges = tree.nedges - tree.ntips
+    if n_internal_edges > min_splits:
+        return tree, False
+    return tree, True
 
 
 def filter_by_max_copies(tree, max_copies):

@@ -44,6 +44,7 @@ full = [
   "diamond",  # installs blast, entrez-direct, ncbi-vdb, ...
   "mcl",
   "raxml-ng",
+  "mkdocs-material",
   # "mafft",
   # "clipkit",  # installs biopython
 ]

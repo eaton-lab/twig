@@ -28,25 +28,30 @@ twig -h
 
 ### Top-level command
 ```bash
-twig [subcommand]
+-----------------------------------------------------
+|  twig: tree-based workflows for integrative genomics |
+-----------------------------------------------------
 
-subcommands
------------
-    format-data     ...
-    format-fasta    ...
-    format-genome   ...
-    diamond-blastx  ...
-    macse-prep      ...
-    macse-align     ...
-    macse-refine    ...
-    tree-filter     ...
-    tree-rooting    ...
-    alien-index     ...
+options:
+  -h, --help         show this help message and exit
+  -v, --version      show program's version number and exit
 
-pipelines?
------------
-    ortholab        ...
-    synteny         ...
+subcommands:
+  --------------     -----------------------------------------------------
+    csubst           run csubst in wrapper
+    diamond-bl       search blastp hits of one protein fasta to another
+    diamond-pw       write .tsv blast hits for all pairs of fasta sequence files
+    format-fasta     format fasta to sort/filter/subset/relabel/modify sequences
+    format-gff       format gff to filter and relabel genes and scaffolds
+    genome-table     write table with chrom/scaff [names lengths ngenes]
+    filter-concat    filter loci and genes, concatenate down or right, convert .fa/.phy/.nex
+    macse-prep       prepare CDS for macse alignment (trim,filter,iso-collapse)
+    macse-align      run macse alignment (CDS/AA)
+    macse-refine     trim/filter/convert alignments
+    partition-cds    write a partition file for phylogenetic inference
+    tree-filter      filter and relabel a set of trees for downstream analyses
+    tree-rooter      Re-root gene trees by outgroup, species tree, and/or MAD
+    tree-skeleton    Force gene tree to match species tree topology
 ```
 
 ### Subcommands

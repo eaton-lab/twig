@@ -11,7 +11,7 @@
 ### Installation
 While in development the best way to install twig is to install dependencies with
 conda and the install twig from GitHub using pip.
-```
+```bash
 # install dependencies into a conda env
 conda install toytree diamond macse -c conda-forge -c bioconda
 

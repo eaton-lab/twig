@@ -1,0 +1,39 @@
+site_name: twig
+site_url: https://eaton-lab/twig
+theme:
+  name: material
+  features:
+    - content.code.copy
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      use_pygments: true
+  - admonition      
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details  
+
+nav:
+  - index.md
+  - installation.md
+  # - terminology.md
+  - quick-guide.md
+  # - tutorial.md
+  # ...
+  - macse-prep.md
+  - macse-align.md
+  # - macse-refine.md
+  - tree-filter.md
+  # - tree-rooter.md
+  # - tree-skeleton.md
+  # ...
+  - csubst.md
+  # - tutorial:
+    # - tutorial/ortholab.md
+    # - tutorial/seqlab.md
+    # - tutorial/treelab.md
+  # - data-guide.md
+  # - workshop:
+  #   - workshop/transcriptome_assembly.md

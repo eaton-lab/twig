@@ -24,7 +24,7 @@ nav:
   # ...
   - macse-prep.md
   - macse-align.md
-  # - macse-refine.md
+  - macse-refine.md
   - tree-filter.md
   # - tree-rooter.md
   # - tree-skeleton.md

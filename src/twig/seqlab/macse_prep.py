@@ -264,7 +264,7 @@ def run_macse_prep(args):
 
     # clean up tmp files
     suffices = [
-        ".trim_info",
+        # ".trim_info",
         ".tmp.aa.fa",
         ".tmp.trim.mask",
     ]

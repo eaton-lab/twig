@@ -199,14 +199,14 @@ def run_tree_filter(args):
             npost = tree.ntips
             outlier_tips_removed += npre - npost
         if args.min_edges or args.min_support:
+            nedges = tree.nedges
             tree, filt = collapse_by_min_support_and_require_min_splits(tree, args.min_support, args.min_edges)
+            edges_collapsed_by_min_support += nedges - tree.nedges
             if filt:
                 filters['min-edges'] += 1
                 continue
         if args.collapse_outgroups or args.require_outgroups:
-            nedges = tree.nedges
             tree, filt = collapse_and_require_outgroups(tree, outgroups, args.require_outgroups, args.collapse_outgroups)
-            edges_collapsed_by_min_support += nedges - tree.nedges
             if filt:
                 filters['require-outgroup'] += 1
                 continue

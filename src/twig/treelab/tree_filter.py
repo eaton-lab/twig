@@ -172,6 +172,7 @@ def run_tree_filter(args):
         "minmap": 0,
         "require-outgroup": 0,
         "min-tips": 0,
+        "min-edges": 0,
         "max-copies": 0,
     }
 
@@ -196,6 +197,11 @@ def run_tree_filter(args):
             tree = exclude_long_tips(tree, args.edge_outlier_ingroup, args.edge_outlier_outgroup)
             npost = tree.ntips
             outlier_tips_removed += npre - npost
+        if args.min_edges or args.min_support:
+            tree, filt = collapse_by_min_support_and_require_min_splits(tree, args.min_support, args.min_edges)
+            if filt:
+                filters['min-edges'] += 1
+                continue
         if args.collapse_outgroups or args.require_outgroups:
             tree, filt = collapse_and_require_outgroups(tree, outgroups, args.require_outgroups, args.collapse_outgroups)
             if filt:

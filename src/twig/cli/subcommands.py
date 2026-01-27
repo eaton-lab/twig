@@ -727,6 +727,8 @@ def get_parser_tree_filter(parser: ArgumentParser | None = None) -> ArgumentPars
     # filter on tree data
     parser.add_argument("-m", "--min-tips", type=int, metavar="int", default=4, help="min tips after pruning [4]")
     parser.add_argument("-c", "--max-copies", type=int, metavar="int", help="filter trees with >c gene copies from a taxon [None]")
+    parser.add_argument("-s", "--min-support", type=int, metavar="int", default=0, help="collapse edges w/ support <s into polytomies [0]")
+    parser.add_argument("-e", "--min-edges", type=int, metavar="int", default=0, help="filter trees with <e non-zero edges [0]")
     parser.add_argument("-eo", "--edge-outlier-outgroup", type=float, metavar="float", default=10, help="exclude 'outgroup' population edges if >eo stdev from mean [10]")
     parser.add_argument("-ei", "--edge-outlier-ingroup", type=float, metavar="float", default=5, help="exclude non 'outgroup' population edges if >ei stdev from mean [5]")
 

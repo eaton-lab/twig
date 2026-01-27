@@ -168,6 +168,7 @@ def run_tree_filter(args):
     ntrees_start = 0
     ntrees_end = 0
     outlier_tips_removed = 0
+    edges_collapsed_by_min_support = 0
     filters = {
         "minmap": 0,
         "require-outgroup": 0,
@@ -203,7 +204,9 @@ def run_tree_filter(args):
                 filters['min-edges'] += 1
                 continue
         if args.collapse_outgroups or args.require_outgroups:
+            nedges = tree.nedges
             tree, filt = collapse_and_require_outgroups(tree, outgroups, args.require_outgroups, args.collapse_outgroups)
+            edges_collapsed_by_min_support += nedges - tree.nedges
             if filt:
                 filters['require-outgroup'] += 1
                 continue
@@ -240,7 +243,8 @@ def run_tree_filter(args):
     for key in filters:
         print(f"trees filtered by {key} = {filters[key]}", file=sys.stderr)
     print(f"ntrees end = {ntrees_end}", file=sys.stderr)
-    print(f"outlier tips removed = {outlier_tips_removed}", file=sys.stderr)    
+    print(f"outlier tips removed = {outlier_tips_removed}", file=sys.stderr)
+    print(f"edges collapsed by min support = {edges_collapsed_by_min_support}", file=sys.stderr)
 
 
 def main():

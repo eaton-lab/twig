@@ -75,9 +75,13 @@ def prune_sequences(
             with open(scores_file, 'r') as datain:
                 for line in datain.readlines():
                     if line:
-                        name, score, *_ = line.split("\t")
-                        length = len(seqs[name].replace("-", ""))
-                        scores[str(name)] = (float(score), int(length))
+                        # use try/except to skip headers if present. Membership is checked below.
+                        try:
+                            name, score, *_ = line.split("\t")
+                            length = len(seqs[name].replace("-", ""))
+                            scores[str(name)] = (float(score), int(length))
+                        except KeyError:
+                            pass
 
             # if using scores then a score must be present for every sequence
             diff = set(seqs) - set(scores)

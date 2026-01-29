@@ -77,7 +77,7 @@ def prune_sequences(
                     if line:
                         # use try/except to skip headers if present. Membership is checked below.
                         try:
-                            name, score, *_ = line.split("\t")
+                            name, score, *_ = line.strip().plit("\t")
                             length = len(seqs[name].replace("-", ""))
                             scores[str(name)] = (float(score), int(length))
                         except KeyError:
@@ -103,9 +103,11 @@ def prune_sequences(
                 for line in datain.readlines():
                     if line:
 
-                        # [TODO]
+                        # [TODO] detect and handle header??
+                        # ...
+
                         # parse regex file line
-                        name, pattern, *x = line.split("\t")
+                        name, pattern, *x = line.strip().split("\t")
                         # check for optional group key
                         gkey = x[0] if x else 1
                         # try to cast to int if possible
@@ -171,7 +173,7 @@ def prune_sequences(
                 group_key = sname
 
             # store grouped data
-            logger.debug(f"{sname} -- {subgroup} -- {group_key}")
+            # logger.debug(f"{sname} -- {subgroup} -- {group_key}")
             if group_key in groups:
                 groups[group_key].append((sname, score))
             else:

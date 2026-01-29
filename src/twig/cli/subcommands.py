@@ -9,7 +9,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 TMPDIR = gettempdir()
 
 
-ISOFORM_REGEX_DEFAULT = r"^(?P<key>.*)_i(?P<iso>\d+)(?=\.p\d+(?:\..*)?$)"
+# ISOFORM_REGEX_DEFAULT = r"^(?P<key>.*)_i(?P<iso>\d+)(?=\.p\d+(?:\..*)?$)"
 # ^ start of string
 # (?P<key>.*) captures a group called key
 # _i boundary between key and iso
@@ -17,8 +17,7 @@ ISOFORM_REGEX_DEFAULT = r"^(?P<key>.*)_i(?P<iso>\d+)(?=\.p\d+(?:\..*)?$)"
 # (?=\.p\d+(?:\..*)?$) captures what is left, expects .p\d+
 # $ end of string
 # NOTE: (?P<key>.*) is greedy and will try to place this as far right as possible
-
-ISOFORM_REGEX_DEFAULT = r"^(?P<key>.+?)(?=\.\d+__)"
+# ISOFORM_REGEX_DEFAULT = r"^(?P<key>.+?)(?=\.\d+__)"
 
 
 def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
@@ -461,6 +460,8 @@ def get_parser_isoform_prune(parser: ArgumentParser | None = None) -> ArgumentPa
             | TSV with [gene-name\tscore\tany...]. The info.tsv file from
             | `twig macse-trim` serves this purpose to provide homology scores
             | to select the isoform with greatest homology to other sequences.
+            |
+            | Tip: use --log-level DEBUG to inspect grouping/regex accuracy
             -------------------------------------------------------------------
         """),
         epilog=dedent("""
@@ -502,7 +503,7 @@ def get_parser_isoform_prune(parser: ArgumentParser | None = None) -> ArgumentPa
     parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
 
     # regular expression acting on sequence or taxon+sequence names
-    parser.add_argument("-r", "--regex", type=re.compile, metavar="str", default=ISOFORM_REGEX_DEFAULT, help="regex used to group isoform sequences ['%(default)s']")
+    parser.add_argument("-r", "--regex", type=re.compile, metavar="str", default=None, help="regex used to group isoform sequences ['%(default)s']")
     parser.add_argument("-R", "--regex-file", type=Path, metavar="path", help="optional tsv with taxon\tregex pattern (tip: use with -d) ['%(default)s']")
 
     # others

@@ -55,7 +55,7 @@ def prune_sequences(
     # orig = [taxonA-gene1, taxonA-gene2, taxonB-gene1, taxonB-gene2]
     # imap = {taxonA: [taxonA-gene1, taxonA-gene2], taxonB: [...], ...}
     if delim is None:
-        imap = {"XXX-NO-GROUPS-XXX": sorted(seqs)}
+        imap = {"SHARED-REGEX": sorted(seqs)}
     else:
         imap = {}
         for name in seqs:
@@ -124,8 +124,10 @@ def prune_sequences(
         else:
             raise ValueError(f"regex file is malformed: {regex_file}")
     else:
-        patterns = {'XXX-NO-GROUPS-XXX': (regex, 1)}
-    logger.debug(f"patterns={patterns}")
+        patterns = {'SHARED-REGEX': (regex, 1)}
+    for key in patterns:
+        pat, grp = patterns[key]
+        logger.debug(f"group={key}, regex={pat}, select={grp}")
 
     # keep a global set of observed sequences and raise an exception
     # if a sequence lands in more than one regex group
@@ -147,6 +149,7 @@ def prune_sequences(
             # sanity check
             if sname in observed:
                 raise ValueError(f"{sname} matched to more than one group. Check your delim pattern.")
+            observed.add(sname)
 
             # get the group key (up one group)
             m = pattern.match(sname)
@@ -154,9 +157,10 @@ def prune_sequences(
                 group_key = m.group(gkey)  # which capture group from regex pattern
             else:
                 # no match, treat as its own group
-                group_key = name
+                group_key = sname
 
             # store grouped data
+            logger.debug(f"{sname} -- {subgroup} -- {group_key}")
             if group_key in groups:
                 groups[group_key].append((sname, score))
             else:
@@ -175,20 +179,18 @@ def prune_sequences(
         collapsed[best_name] = seqs[best_name]
 
         # report if iso's were collapsed
-        if len(members) > 1:
-            # names
-            kept = best_name[len(group_key):]
-            others = [i[0] for i in members if i[0] != best_name]
+        kept = best_name[len(group_key):]
+        others = [i[0] for i in members if i[0] != best_name]
 
-            # get the leftover parts of names
-            rests = [s[len(group_key):] for s in others]
+        # get the leftover parts of names
+        rests = [s[len(group_key):] for s in others]
 
-            # shorten rests if very long
-            if len(rests) > 5:
-                rests = rests[:5] + ["..."]
+        # shorten rests if very long
+        if len(rests) > 5:
+            rests = rests[:5] + ["..."]
 
-            # report
-            logger.debug(f"pruned {len(members) - 1} isoforms: group='{group_key}', kept='{kept}', pruned={rests}")
+        # report
+        logger.debug(f"pruned {len(members) - 1} isoforms: group='{group_key}', kept='{kept}', pruned={rests}")
 
     # filter the locus if too many were collapsed
     # filtered = len(collapsed) < min_count

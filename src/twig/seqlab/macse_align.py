@@ -38,7 +38,7 @@ def run_macse_align(args):
 
     # bail out if final file exists
     if args.outpath.exists() and not args.force:
-        logger.warning(f"[{args.outpath.name}] [skipping] {args.outpath} already exists. Using --force to overwrite")
+        logger.warning(f"[{args.outpath.name}] [skipping] {args.outpath} already exists. Use --force to overwrite")
         return 0
     call_macse_align(args.input, args.outpath, args.max_refine_iter, args.verbose)
     logger.info(f"[{args.outpath.name}] alignment written to {args.outpath}")

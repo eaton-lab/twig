@@ -1,22 +1,21 @@
 #!/usr/bin/env python
 
-"""Prep sequences for macse alignment (trim,filter,iso-collapse)
+"""Trim and filter sequences for macse alignment.
 
-
-If you call:
+Command
+-------
 $ twig macse-prep -i CDS -o OUT/ID.nt.fa
 
-It will produce:
-- OUT/ID.nt.fa
-- OUT/ID.nt.fa.trim_info
-
+Output
+------
+- OUT/ID.trim.nt.fa
+- OUT/ID.trim.nt.fa.info.tsv
 """
 
 from typing import List
 import re
 import sys
 import subprocess
-from collections import defaultdict
 from pathlib import Path
 from loguru import logger
 import pandas as pd
@@ -75,38 +74,38 @@ def call_macse_trim_non_homologous_fragments(
 
 def filter_sequences(
     outpath: Path,
-    isoform_regex: re.compile,
     exclude: List[str],
     subsample: List[str],
     min_length: int,
     min_count: int,
+    # min_cov: int,
     force: bool,
 ) -> None:
-    """Write fasta with only one isoform per gene. When multple are present
-    the one with greatest homology to other sequences is retained, with
-    ties broken by length, and then order.
+    """Write fasta with filtered sequences and write info tsv.
     """
     # use trim file if present
-    tnfo = outpath.with_suffix(outpath.suffix + ".trim_info")
+    info_orig = outpath.with_suffix(outpath.suffix + ".trim_info")
+    info_new = outpath.with_suffix(outpath.suffix + ".info.tsv")
 
-    # keep track of filtered-by
-    f = {"homology": 0, "min_length": 0, "isoform": 0, "user": 0}
+    # keep track of sequences filtered-by
+    f = {"homology": 0, "min_length": 0, "user": 0}
 
     # get table with lengths and homology scores
     info = {}
-    with open(tnfo, 'r') as indata:
+    with open(info_orig, 'r') as indata:
         _header = indata.readline()
         for line in indata.readlines():
             data = line.strip().split(";")
             name, length, kept, trimmed, itrimmed, phomology_internal, phomology_total, kept_seq = data
             info[name] = {
                 "name": name,
+                "homology_total": float(phomology_total),
+                "homology_internal": float(phomology_internal),
+                # "homology_min_cov": int(min_cov),
                 "length": int(length),
                 "bp_kept": int(kept),
                 "bp_trim": int(trimmed),
                 "bp_trim_i": int(itrimmed),
-                "homology_internal": float(phomology_internal),
-                "homology_total": float(phomology_total),
                 "discarded": bool(kept_seq == "false")
             }
 
@@ -117,6 +116,10 @@ def filter_sequences(
     low_homology = data.loc[data['discarded']]
     for i in low_homology.index:
         logger.debug(f"[{outpath.name}] {i} excluded by low_homology ({low_homology.loc[i, 'homology_internal']:.3f},{low_homology.loc[i, 'homology_total']:.3f})")
+
+    # write this as a TSV and remove the awful semicolon-delimited macse info file
+    data.to_csv(info_new, sep="\t")
+    info_orig.unlink()
 
     # parse trimmed fasta file
     seqs = {}
@@ -141,8 +144,7 @@ def filter_sequences(
         matched = list(set(names) - set(matched))
 
     # group sequences by isoform regex
-    pat = isoform_regex
-    groups = defaultdict(list)
+    passed = []
     for name, seq in seqs.items():
 
         # exclude if user-excluded
@@ -158,57 +160,29 @@ def filter_sequences(
             f["min_length"] += 1
             continue
 
-        # assign to a group
-        m = pat.match(name)
-        if m:
-            group_key = m.group(1)  # which capture group from regex pattern
-        else:
-            # no match, treat as its own group
-            group_key = name
-
-        # store grouped data
-        idata = (name, seq, info[name]['homology_total'])
-        groups[group_key].append(idata)
-
-    # ...
-    collapsed = {}
-    for group_key, members in groups.items():
-        # members: list of (name, idict)
-        # keep only one per group by [highest homology_total, longest_length, or first]
-        best_name, best_seq, best_score = max(
-            members,
-            key=lambda x: (x[2], len(x[1]))  # (score, length)
-        )
-        collapsed[best_name] = (best_seq, best_score)
-    f["isoform"] = len(seqs) - f["min_length"] - f["user"] - len(collapsed)
-
-    # report isoform collapsed
-    for group in groups:
-        for name, *_ in groups[group]:
-            if name not in collapsed:
-                logger.debug(f"[{outpath.name}] {name} excluded by isoform collapse")
+        passed.append((name, seq))
 
     # filter the locus?
-    filtered = len(collapsed) < min_count
+    filtered = len(passed) < min_count
 
     # write output
     if not filtered:
         with open(outpath, 'w') as hout:
-            for uname in sorted(collapsed):
-                hout.write(f">{uname}\n{seqs[uname]}\n")
+            for pname, pseq in sorted(passed, key=lambda x: x[0]):
+                hout.write(f">{pname}\n{pseq}\n")
 
     # report filtering stats
-    keys = list(collapsed)
+    keys = sorted([i[0] for i in passed])
     mean_length = data.loc[keys, "bp_kept"].mean()
     mean_trimmed = data.loc[keys, "bp_trim"].mean()
     mean_homology = data.loc[keys, "homology_total"].mean()
-    logger.info(f"[{outpath.name}] {len(info)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}, isoform={f['isoform']}])")
+    logger.info(f"[{outpath.name}] {len(info)} seqs -> {len(passed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}])")
     logger.info(f"[{outpath.name}] stats of retained sequences: mean_nt_length={mean_length:.2f}; mean_nt_trimmed={mean_trimmed:.2f}; mean_homology={mean_homology:.2f}")
     if filtered:
-        logger.info(f"[{outpath.name}] locus did not pass 'min-count' filter ({len(collapsed)} < {min_count})")
+        logger.info(f"[{outpath.name}] locus did not pass 'min-count' filter ({len(passed)} < {min_count})")
 
 
-def run_macse_prep(args):
+def run_macse_trim(args):
     """..."""
     set_log_level(args.log_level)#, args.log_file)
 
@@ -233,10 +207,6 @@ def run_macse_prep(args):
         logger.warning(f"[{args.input.name}] [skipping] {args.outpath} already exists. Using --force to overwrite")
         return
 
-    # if skip isoform collapse then set isoform grouper to arbitrary str
-    if args.skip_isoform_collapse:
-        args.isoform_regex = re.compile("@@@@@")
-
     # trim sequences
     call_macse_trim_non_homologous_fragments(
         args.input,
@@ -254,7 +224,6 @@ def run_macse_prep(args):
     # filter by minimum length
     filter_sequences(
         args.outpath,
-        args.isoform_regex,
         args.exclude,
         args.subsample,
         args.min_length,
@@ -280,7 +249,7 @@ def main():
     from twig.cli.subcommands import get_parser_macse_prep
     parser = get_parser_macse_prep()
     args = parser.parse_args()
-    run_macse_prep(args)
+    run_macse_trim(args)
 
 
 if __name__ == "__main__":

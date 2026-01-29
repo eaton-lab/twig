@@ -7,11 +7,18 @@ from tempfile import gettempdir
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 TMPDIR = gettempdir()
-ISOFORM_REGEX_DEFAULT = r"^([^|]+)\|.*?__(.+?)_i\d+"
-# group 1 (shared part up until |)
-# group 2 (after __ and up until first _i)
 
 
+ISOFORM_REGEX_DEFAULT = r"^(?P<key>.*)_i(?P<iso>\d+)(?=\.p\d+(?:\..*)?$)"
+# ^ start of string
+# (?P<key>.*) captures a group called key
+# _i boundary between key and iso
+# (?P<iso>\d+) captures a group called iso
+# (?=\.p\d+(?:\..*)?$) captures what is left, expects .p\d+
+# $ end of string
+# NOTE: (?P<key>.*) is greedy and will try to place this as far right as possible
+
+ISOFORM_REGEX_DEFAULT = r"^(?P<key>.+?)(?=\.\d+__)"
 
 
 def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
@@ -434,37 +441,115 @@ def get_parser_genome_table(parser: ArgumentParser | None = None) -> ArgumentPar
     return parser
 
 
-def get_parser_macse_prep(parser: ArgumentParser | None = None) -> ArgumentParser:
-    """Return a parser for relabel tool.
-    """
+
+
+def get_parser_isoform_prune(parser: ArgumentParser | None = None) -> ArgumentParser:
     KWARGS = dict(
-        prog="macse-prep",
-        usage="macse-prep -i CDS -o OUTDIR [options]",
-        help="prepare CDS for macse alignment (trim,filter,iso-collapse)",
+        prog="isoform-prune",
+        usage="isoform-prune -i CDS -o OUT [options]",
+        help="group sequences by taxon-gene name and select a single isoform by length and/or score",
         formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
         description=dedent("""
             -------------------------------------------------------------------
-            | macse-prep: prepare CDS for alignment (trim, filter, iso-collapse)
+            | isoform-prune: subselect one isoform from gene sequence groups
             -------------------------------------------------------------------
-            | Macse ...
-            | This implements `macse -prog trimNonHomologousFragments` and
-            | additional steps to ...
+            | This command accepts one or more regular expressions to group
+            | sequences by taxon-gene names and select a single representative
+            | sequence. Its primary use is to prune isoforms. If multiple
+            | isoforms are present for a group the kept sequence can be selected
+            | by length and or 'score', where sequence scores can be input as a
+            | TSV with [gene-name\tscore\tany...]. The info.tsv file from
+            | `twig macse-trim` serves this purpose to provide homology scores
+            | to select the isoform with greatest homology to other sequences.
             -------------------------------------------------------------------
         """),
         epilog=dedent("""
             Examples
             --------
-            $ twig macse-prep -i CDS -o OUT.nt.fa
-            $ twig macse-prep -i CDS -hf 0.1 -hi 0.5 -ti 50 -te 50 -hc 15
-            $ twig macse-prep -i CDS -hf 0.3 -hi 0.8 -ti 25 -te 25 -hc 15
-            $ twig macse-prep -i CDS -hf 0.5 -hc 10 -k -ml 200 -e '^sppA.*'
-            $ twig macse-prep -i CDS -s '^sppA.*'
+            $ twig isoform-prune -i CDS -o OUT
+            $ twig isoform-prune -i CDS -o OUT -r '[...]'
+            $ twig isoform-prune -i CDS -o OUT -R regex.tsv
+            $ twig isoform-prune -i CDS -o OUT -R regex.tsv -s info.tsv
 
             # run parallel jobs on many cds files
-            $ parallel -j 10 "twig macse-prep -i {} ..."  ::: CDS/*.fa
+            $ parallel -j 10 "twig isoform-prune -i {} ..."  ::: CDS/*.fa
 
             # full pipeline
-            $ twig macse-prep -i CDS -o TRIM     # {TRIM}
+            $ twig macse-trim -i CDS -o TRIM     # {TRIM}
+            $ twig isoform-prune -i CDS -s TRIM.info.tsv -o TRIM  # {TRIM}
+            $ twig macse-align -i TRIM -o MSA    # {MSA}
+            $ twig macse-refine -i MSA -o MSA    # {MSA}.nt.fa, {MSA}.aa.fa
+        """)
+    )
+
+    # create parser or connect as subparser to cli parser
+    if parser:
+        KWARGS['name'] = KWARGS.pop("prog")
+        parser = parser.add_parser(**KWARGS)
+    else:
+        KWARGS.pop("help")
+        parser = ArgumentParser(**KWARGS)
+
+    # path args
+    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS (aligned or unaligned)")
+    parser.add_argument("-o", "--outpath", type=Path, metavar="path", required=True, help="path to write nt fasta result")
+    parser.add_argument("-s", "--scores", type=Path, metavar="path", help="optional tsv (no header) with name\tscore\t... to select isoform by top score")
+    # parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
+
+    # delim options for include/exclude/min-taxa by taxon name
+    parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip (gene) labels to select taxon names")
+    parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
+    parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
+
+    # regular expression acting on sequence or taxon+sequence names
+    parser.add_argument("-r", "--regex", type=re.compile, metavar="str", default=ISOFORM_REGEX_DEFAULT, help="regex used to group isoform sequences ['%(default)s']")
+    parser.add_argument("-R", "--regex-file", type=Path, metavar="path", help="optional tsv with taxon\tregex pattern (tip: use with -d) ['%(default)s']")
+
+    # others
+    # parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
+    parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
+    # parser.add_argument("-k", "--keep", action="store_true", help="keep tmp files (for debugging)")
+    parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
+    return parser
+
+
+def get_parser_macse_trim(parser: ArgumentParser | None = None) -> ArgumentParser:
+    """Return a parser for relabel tool.
+    """
+    KWARGS = dict(
+        prog="macse-trim",
+        usage="macse-trim -i CDS -o OUTDIR [options]",
+        help="trim and filter CDS prior to macse alignment",
+        formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
+        description=dedent("""
+            -------------------------------------------------------------------
+            | macse-trim: trim and filter CDS by homology and length for alignment
+            -------------------------------------------------------------------
+            | This command extends the 'trimNonHomologousFragments` program
+            | in macse that is used to compute homology between sequences, trim
+            | non-homologous fragments, and filter sequences with internal or
+            | edge-based homology lower than set thresholds. In addition, users
+            | can subselect samples by name, filter by min-length after trimming,
+            | and filter loci by min number of sequences or min number of taxa
+            | (by delimited taxon names from gene names).
+            |
+            | See also: `twig isoform-prune`, `twig macse-align`, `twig macse-refine`
+            -------------------------------------------------------------------
+        """),
+        epilog=dedent("""
+            Examples
+            --------
+            $ twig macse-trim -i CDS -o OUT.nt.fa
+            $ twig macse-trim -i CDS -hf 0.1 -hi 0.5 -ti 50 -te 50 -hc 15
+            $ twig macse-trim -i CDS -hf 0.3 -hi 0.8 -ti 25 -te 25 -hc 15
+            $ twig macse-trim -i CDS -hf 0.5 -hc 10 -k -ml 200 -e '^sppA.*'
+            $ twig macse-trim -i CDS -s '^sppA.*'
+
+            # run parallel jobs on many cds files
+            $ parallel -j 10 "twig macse-trim -i {} ..."  ::: CDS/*.fa
+
+            # full pipeline
+            $ twig macse-trim -i CDS -o TRIM     # {TRIM}
             $ twig macse-align -i TRIM -o MSA    # {MSA}
             $ twig macse-refine -i MSA -o MSA    # {MSA}.nt.fa, {MSA}.aa.fa
         """)
@@ -483,6 +568,12 @@ def get_parser_macse_prep(parser: ArgumentParser | None = None) -> ArgumentParse
     parser.add_argument("-o", "--outpath", type=Path, metavar="path", required=True, help="path to write nt fasta result")
     parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
     parser.add_argument("-s", "--subsample", type=str, metavar="str", nargs="*", help="optional names or glob to include only a subset sequences")
+
+    # delim options for include/exclude/min-taxa by taxon name
+    parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip labels")
+    parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
+    parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
+
     # options
     parser.add_argument("-ml", "--min-length", type=int, metavar="int", default=0, help="min nt sequence length after trimming [%(default)s]")
     parser.add_argument("-mc", "--min-count", type=int, metavar="int", default=0, help="min num sequences that must pass filtering to write output [%(default)s]")
@@ -492,21 +583,12 @@ def get_parser_macse_prep(parser: ArgumentParser | None = None) -> ArgumentParse
     parser.add_argument("-ti", "--min-trim-length-homology-internal", type=int, metavar="int", default=50, help="trim fragments w/ len <ti and homology <mi w/ <mc sequences [%(default)s]")
     parser.add_argument("-te", "--min-trim-length-homology-external", type=int, metavar="int", default=50, help="trim fragments w/ len <tx and homology <mh w/ <mc sequences [%(default)s]")
     parser.add_argument("-mm", "--mem-length", type=int, metavar="int", default=6, help="homology is the prop of aa Maximum Exact Matches of this length [%(default)s]")
-    parser.add_argument("-is", "--isoform-regex", type=re.compile, metavar="str", default=ISOFORM_REGEX_DEFAULT, help="regex used to group isoform sequences ['%(default)s']")
-    # parser.add_argument("-ac", "--aln-trim-ends-min-coverage", type=float, metavar="float", default=0.4, help="trim alignment edges to where a min percent of samples have data [%(default)s]")
-    # parser.add_argument("-as", "--aln-trim-window-size", type=int, metavar="int", default=5, help="trim alignment using a sliding 'half_window_size' defined as ... [%(default)s]")
-    # parser.add_argument("-xa", "--skip-alignment", action="store_true", help="skip alignment step and only trim/filter sequences")
-
-    # choose one or more
-    # parser.add_argument("-xt", "--skip-trim-and-filter", action="store_true", help="skip trim and filter step")
-    parser.add_argument("-xi", "--skip-isoform-collapse", action="store_true", help="skip isoform collapse step")
 
     # others
     parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
     parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
     parser.add_argument("-k", "--keep", action="store_true", help="keep tmp files (for debugging)")
     parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
-    # parser.add_argument("-L", "--log-file", type=Path, metavar="path", help="append stderr log to a file")
     return parser
 
 

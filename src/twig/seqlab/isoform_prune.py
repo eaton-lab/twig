@@ -102,6 +102,9 @@ def prune_sequences(
             with open(regex_file, 'r') as datain:
                 for line in datain.readlines():
                     if line:
+
+                        # [TODO]
+                        # parse regex file line
                         name, pattern, *x = line.split("\t")
                         # check for optional group key
                         gkey = x[0] if x else 1
@@ -110,6 +113,8 @@ def prune_sequences(
                             gkey = int(gkey)
                         except Exception:
                             gkey = str(gkey)
+
+                        # store the {name: (regex, key)}
                         patterns[str(name)] = (re.compile(pattern), gkey)
 
             # if using regex_file then a pattern must be present for every sequence
@@ -125,6 +130,8 @@ def prune_sequences(
             raise ValueError(f"regex file is malformed: {regex_file}")
     else:
         patterns = {'SHARED-REGEX': (regex, 1)}
+
+    # report patterns to logger
     for key in patterns:
         pat, grp = patterns[key]
         logger.debug(f"group={key}, regex={pat}, select={grp}")
@@ -138,7 +145,11 @@ def prune_sequences(
     for taxon_group, (pattern, gkey) in patterns.items():
 
         # select only the sequences in this taxon_group
-        subgroup = imap[taxon_group]
+        subgroup = imap.get(taxon_group)
+
+        # skip if this locus does not contain this subgroup
+        if not subgroup:
+            continue
 
         # apply this groups specific regular expression to find isoforms
         for sname in subgroup:

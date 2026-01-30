@@ -77,7 +77,7 @@ def prune_sequences(
                     if line:
                         # use try/except to skip headers if present. Membership is checked below.
                         try:
-                            name, score, *_ = line.strip().plit("\t")
+                            name, score, *_ = line.strip().split("\t")
                             length = len(seqs[name].replace("-", ""))
                             scores[str(name)] = (float(score), int(length))
                         except KeyError:

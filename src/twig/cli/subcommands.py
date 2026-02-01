@@ -202,7 +202,7 @@ def get_parser_diamond_pw(parser: ArgumentParser | None = None) -> ArgumentParse
         parser = ArgumentParser(**kwargs)
 
     # add arguments
-    parser.add_argument("-i", "--input", type=Path, metavar="path", help="fasta sequence files for all-by-all blastp")
+    parser.add_argument("-i", "--input", type=Path, metavar="path", nargs="*", required=True, help="fasta sequence files for all-by-all blastp")
     parser.add_argument("-o", "--outdir", type=Path, metavar="path", default="./blast", help="directory to write results (created if necessary) [%(default)s]")
     parser.add_argument("-e", "--evalue", type=float, metavar="float", default=1e-5, help="max evalue to report an alignment [%(default)s]")
     parser.add_argument("-m", "--min-bitscore", type=float, metavar="float", default=None, help="min bit-score to report an alignment (overrides -e) [%(default)s]")
@@ -468,9 +468,10 @@ def get_parser_isoform_prune(parser: ArgumentParser | None = None) -> ArgumentPa
             Examples
             --------
             $ twig isoform-prune -i CDS -o OUT
+            $ twig isoform-prune -i CDS -o OUT -s . 1
             $ twig isoform-prune -i CDS -o OUT -r '[...]'
             $ twig isoform-prune -i CDS -o OUT -R regex.tsv
-            $ twig isoform-prune -i CDS -o OUT -R regex.tsv -s info.tsv
+            $ twig isoform-prune -i CDS -o OUT -S split.tsv -I info.tsv
 
             # run parallel jobs on many cds files
             $ parallel -j 10 "twig isoform-prune -i {} ..."  ::: CDS/*.fa
@@ -492,21 +493,26 @@ def get_parser_isoform_prune(parser: ArgumentParser | None = None) -> ArgumentPa
         parser = ArgumentParser(**KWARGS)
 
     # path args
-    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS (aligned or unaligned)")
-    parser.add_argument("-o", "--outpath", type=Path, metavar="path", required=True, help="path to write nt fasta result")
-    parser.add_argument("-s", "--scores", type=Path, metavar="path", help="optional tsv (no header) with name\tscore\t... to select isoform by top score")
+    parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS fasta (aligned or unaligned)")
+    parser.add_argument("-o", "--outpath", type=Path, metavar="path", required=True, help="path to write trimmed nucleotide fasta result")
     # parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
 
     # delim options for include/exclude/min-taxa by taxon name
-    parser.add_argument("-d", "--delim", type=str, metavar="str", help="delimiter to split tip (gene) labels to select taxon names")
+    parser.add_argument("-d", "--delim", type=str, metavar="str", help="split gene names on str. Used to get taxon names for -R or -X")
     parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
     parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
 
-    # regular expression acting on sequence or taxon+sequence names
-    parser.add_argument("-r", "--regex", type=re.compile, metavar="str", default=None, help="regex used to group isoform sequences ['%(default)s']")
-    parser.add_argument("-R", "--regex-file", type=Path, metavar="path", help="optional tsv with taxon\tregex pattern (tip: use with -d) ['%(default)s']")
+    # enter twig macse-trim .info.tsv file
+    parser.add_argument("-I", "--info-file", type=Path, metavar="path", help="use a tsv file from `twig macse-trim` to score isoforms")
 
-    # others
+    # regular expression acting on sequence or taxon+sequence names
+    parser.add_argument("-r", "--regex", type=re.compile, metavar="str", default=None, help="use a regex pattern to group genes")
+    parser.add_argument("-R", "--regex-file", type=Path, metavar="path", help=r"use a tsv to provide taxon\tregex for each taxon (use with -d)")
+
+    # delimiter based grouping
+    parser.add_argument("-s", "--split", metavar=("str", "int"), nargs=2, default=None, help="use {s} {i} to group names by str left of the {i}'th occurrence of {s}")
+    parser.add_argument("-S", "--split-file", type=Path, metavar="path", help=r"use a tsv to provide -s args as taxon\t{s}\t{i} for each taxon")
+
     # parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
     parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
     # parser.add_argument("-k", "--keep", action="store_true", help="keep tmp files (for debugging)")

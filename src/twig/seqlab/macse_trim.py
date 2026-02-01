@@ -101,7 +101,6 @@ def filter_sequences(
                 "name": name,
                 "homology_total": float(phomology_total),
                 "homology_internal": float(phomology_internal),
-                # "homology_min_cov": int(min_cov),
                 "length": int(length),
                 "bp_kept": int(kept),
                 "bp_trim": int(trimmed),

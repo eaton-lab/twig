@@ -216,21 +216,20 @@ def get_scores(seqs: dict[str, str], info_file: Path):
             with open(info_file, 'r') as datain:
                 for line in datain.readlines():
                     if line:
-                        # use try/except to skip headers if present. Membership is checked below.
-                        try:
-                            score = line.strip().split("\t")
-                            info = TrimInfo(
-                                str(score[0]),
-                                float(score[1]),
-                                float(score[2]),
-                                int(score[3]),
-                                int(score[4]),
-                                int(score[5]),
-                                bool(score[6]),
-                            )
-                            scores[str(info.name)] = info
-                        except KeyError:
-                            pass
+                        # skip header
+                        if line.startswith("name"):
+                            continue
+                        score = line.strip().split("\t")
+                        info = TrimInfo(
+                            str(score[0]),
+                            float(score[1]),
+                            float(score[2]),
+                            int(score[3]),
+                            int(score[4]),
+                            int(score[5]),
+                            bool(score[6]),
+                        )
+                        scores[str(info.name)] = info
 
             # if using scores then a score must be present for every sequence
             diff = set(seqs) - set(scores)

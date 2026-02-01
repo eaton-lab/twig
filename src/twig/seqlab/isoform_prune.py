@@ -35,7 +35,7 @@ class TrimInfo:
     bp_kept: int
     bp_trim: int
     bp_trim_i: int
-    discarded: int
+    discarded: bool
 
     @property
     def informative_bp(self) -> int:
@@ -45,27 +45,6 @@ class TrimInfo:
     def effective_informative_homolog_bp(self) -> float:
         # primary score (bigger is better)
         return self.informative_bp * float(self.homology_internal)
-
-
-
-def isoform_score_from_macse_trim(trim_info_path: Path):
-    """Calculate a weighted score from macse trim info statistics.
-
-    The idea here is to penalize for:
-      - ...
-      - ...
-      - ...
-    """
-    # parse the isoform trim data from tsv
-    df = pd.read_csv(trim_info_path, sep="\t")
-    logger.info(df.head())
-
-    # calculate weighted score
-    # keep_frac = nbKeep / initialSeqLength
-    # inform_keep_frac = (initialSeqLength - nbInformativeTrim) / initialSeqLength  # bigger is better
-    # internal_trim = percentHomologExcludingExtremities                            # smaller is better
-
-    # sort samples within each group
 
 
 def get_patterns_dict_from_regex(regex: str, regex_file: Path, imap: dict[str, list[str]]):
@@ -240,7 +219,15 @@ def get_scores(seqs: dict[str, str], info_file: Path):
                         # use try/except to skip headers if present. Membership is checked below.
                         try:
                             score = line.strip().split("\t")
-                            info = TrimInfo(*score)
+                            info = TrimInfo(
+                                str(score[0]),
+                                float(score[1]),
+                                float(score[2]),
+                                int(score[3]),
+                                int(score[4]),
+                                int(score[5]),
+                                bool(score[6]),
+                            )
                             scores[str(info.name)] = info
                         except KeyError:
                             pass

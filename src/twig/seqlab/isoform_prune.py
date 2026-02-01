@@ -227,7 +227,8 @@ def get_scores(seqs: dict[str, str], info_file: Path):
                             int(score[3]),
                             int(score[4]),
                             int(score[5]),
-                            bool(score[6]),
+                            int(score[6]),
+                            bool(score[7]),
                         )
                         scores[str(info.name)] = info
 

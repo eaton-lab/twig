@@ -179,6 +179,7 @@ def filter_sequences(
     logger.info(f"[{outpath.name}] stats of retained sequences: mean_nt_length={mean_length:.2f}; mean_nt_trimmed={mean_trimmed:.2f}; mean_homology={mean_homology:.2f}")
     if filtered:
         logger.info(f"[{outpath.name}] locus did not pass 'min-count' filter ({len(passed)} < {min_count})")
+        outpath.unlink()
 
 
 def run_macse_trim(args):

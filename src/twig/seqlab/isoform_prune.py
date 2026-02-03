@@ -143,7 +143,8 @@ def get_patterns_dict_from_split(split: str, split_file: Path, imap: dict[str, l
                         # it should be fine if present, just a key with no matches...
 
                         # parse regex file line
-                        name, delim, *x = line.strip().split("\t")
+                        name, delim, *x = line.strip().split()
+                        delim = delim.strip("'").strip('"')
                         idx = int(x[0]) if x else 1
 
                         # store the {name: (regex, key)}
@@ -161,11 +162,12 @@ def get_patterns_dict_from_split(split: str, split_file: Path, imap: dict[str, l
         else:
             raise TwigError(f"split file is malformed: {split_file}")
     else:
-        patterns = {'ALL-SEQUENCES': (str(split[0]), int(split[1]))}
+        # patterns = {ALL-SEQUENCES': (str(split[0]), int(split[1]))}
+        patterns = {i: (str(split[0]), int(split[1])) for i in imap}
     logger.debug(patterns)
     # value check
-    if any(i[1] == 0 for i in patterns.values()):
-        raise TwigError("split index selector(s) cannot be zero. Use >1 or <1 to select the nth occurrence from start or end")
+    #if any(i[1] == 0 for i in patterns.values()):
+    #    raise TwigError("split index selector(s) cannot be zero. Use >1 or <1 to select the nth occurrence from start or end")
     return patterns
 
 
@@ -201,6 +203,11 @@ def get_groups_from_split(split: list[str, int], split_file: Path, imap: dict[st
             parts = sname.split(delim)
             parts_left_of_nth = parts[:idx]
             group_key = delim.join(parts_left_of_nth)
+
+            # if no key split from name then use full name (no collapse)
+            if not group_key:
+                group_key = sname
+
             if group_key in groups:
                 groups[group_key].append(sname)
             else:
@@ -362,6 +369,9 @@ def prune_sequences(
             logger.info(f"pruned {len(members) - 1} isoforms: group='{group_key}', kept='{kept}', pruned={rests}")
         else:
             logger.debug(f"pruned {len(members) - 1} isoforms: group='{group_key}', kept='{kept}', pruned={rests}")
+
+    # report total pruned
+    logger.info(f"{len(seqs) - len(collapsed)} isoforms pruned; {len(collapsed)} remaining sequences written to {outpath}")
 
     # filter the locus if too many were collapsed
     # filtered = len(collapsed) < min_count

@@ -164,7 +164,6 @@ def get_patterns_dict_from_split(split: str, split_file: Path, imap: dict[str, l
     else:
         # patterns = {ALL-SEQUENCES': (str(split[0]), int(split[1]))}
         patterns = {i: (str(split[0]), int(split[1])) for i in imap}
-    logger.debug(patterns)
     # value check
     #if any(i[1] == 0 for i in patterns.values()):
     #    raise TwigError("split index selector(s) cannot be zero. Use >1 or <1 to select the nth occurrence from start or end")

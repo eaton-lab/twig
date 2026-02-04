@@ -44,13 +44,10 @@ def run_csubst(args):
         logger.error(INSTALL_MSG.format(args.env))
         sys.exit(1)
 
-    # ensure outdir exists
-    # args.outdir.mkdir(exist_ok=True)
-    # args.prefix = args.prefix if args.prefix is not None else args.alignment.name
-
     # check to create workdir
     args.workdir = args.outdir
     args.workdir = args.workdir.expanduser().absolute()
+    args.workdir = args.wordir if args.workdir != Path.cwd() else args.workdir / "csubst"
     if args.workdir.exists() and args.workdir.is_dir():
         if not args.force:
             raise TwigError(f"path exists at {args.workdir}/. Use --force to overwrite.")
@@ -76,17 +73,17 @@ def run_csubst(args):
 
     # copy the alignment file into the results dir and use that one.
     # copy the tree file and strip internal labels
-    dst = args.workdir / "csubst_alignment.fa"
+    dst = args.workdir / "csubst_input_alignment.fa"
     shutil.copy2(args.alignment, dst)
     args.alignment = dst
     tree = toytree.tree(args.tree)
-    dst = args.workdir / "csubst_tree.fa"
+    dst = args.workdir / "csubst_input_tree.nwk"
     tree.write(dst, None, None)
     args.tree = dst
 
     # run it
     call_csubst(args)
-    logger.info(f"[{args.alignment.name}] csubst result written to {args.workdir}/")
+    logger.info(f"csubst result written to {args.workdir}/")
 
 
 def call_csubst(args):
@@ -114,7 +111,7 @@ def call_csubst(args):
 
     # write to logfile
     logfile = args.workdir / 'csubst_log.txt'
-    logger.info(f"[{args.alignment.name}] csubst log written to {logfile}")
+    logger.info(f"csubst log written to {logfile}")
     with open(logfile, 'w') as out:
         out.write(proc.stdout)
         out.write("\n-------\n")

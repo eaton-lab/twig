@@ -103,7 +103,7 @@ def call_csubst(args):
         "--iqtree_exe", str(BIN_IQTREE),
         "--iqtree_redo", "yes"  # do not accidentally reuse! [todo: make an option]
     ]
-    logger.debug(f"[{args.alignment.name}] " + " ".join(cmd))
+    logger.debug(f"CMD: {' '.join(cmd)}")
     if args.verbose:
         proc = subprocess.run(cmd, stderr=sys.stderr, check=True, cwd=args.workdir)
     else:

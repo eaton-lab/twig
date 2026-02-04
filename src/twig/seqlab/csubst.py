@@ -11,6 +11,7 @@ import sys
 import shutil
 from pathlib import Path
 from loguru import logger
+import toytree
 from twig.utils import set_log_level, TwigError
 
 
@@ -65,7 +66,7 @@ def run_csubst(args):
             logger.info(f"removed existing results in {args.workdir}")
     args.workdir.mkdir(exist_ok=True)
 
-    # ...
+    # expand paths and make sure they all exist
     args.alignment = args.alignment.expanduser().absolute()
     args.tree = args.tree.expanduser().absolute()
     args.foreground = args.foreground.expanduser().absolute()
@@ -73,10 +74,15 @@ def run_csubst(args):
         if not argpath.exists():
             raise TwigError(f"path '{argpath}' does not exist")
 
-    # copy the tree file into the results dir and use that one
+    # copy the alignment file into the results dir and use that one.
+    # copy the tree file and strip internal labels
     dst = args.workdir / "csubst_alignment.fa"
     shutil.copy2(args.alignment, dst)
     args.alignment = dst
+    tree = toytree.tree(args.tree)
+    dst = args.workdir / "csubst_tree.fa"
+    tree.write(dst, None, None)
+    args.tree = dst
 
     # run it
     call_csubst(args)

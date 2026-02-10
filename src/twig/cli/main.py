@@ -29,6 +29,10 @@ THREAD_ENV_VARS = (
 )
 
 DISPATCH = {
+    "align-pre": "..seqlab",
+    "align-cds": "..seqlab",
+    "align-post": "..seqlab",
+    "consensus-fasta": "..seqlab",
     "csubst": "..seqlab",
     "diamond-bl": "..seqlab",
     "diamond-pw": "..seqlab",
@@ -36,10 +40,11 @@ DISPATCH = {
     "format-fasta": "..synteny",
     "format-gff": "..synteny",
     "genome-table": "..synteny",
-    "isoform-prune": "..seqlab",
-    "macse-trim": "..seqlab",
-    "macse-align": "..seqlab",
-    "macse-refine": "..seqlab",
+    # "hyphy-relax": "..seqlab",
+    # "isoform-prune": "..seqlab",
+    # "macse-trim": "..seqlab",
+    # "macse-align": "..seqlab",
+    # "macse-refine": "..seqlab",
     "partition-cds": "..seqlab",
     "tree-filter": "..treelab",
     "tree-rooter": "..treelab",

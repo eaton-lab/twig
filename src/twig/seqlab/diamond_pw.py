@@ -25,6 +25,8 @@ from pathlib import Path
 import itertools
 from tempfile import gettempdir
 from loguru import logger
+from ..utils.logger_setup import set_log_level
+from .diamond_bl import call_diamond_makedb
 # import numpy as np
 # from twig.utils.path_utils import expand_multiple_paths
 # from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -34,7 +36,7 @@ TMPDIR = gettempdir()
 
 
 
-def call_diamond_blastp_parallel(proj: Project, pool: ProcessPoolExecutor) -> None:
+def call_diamond_blastp_parallel():#pool: ProcessPoolExecutor) -> None:
     """
 
     """
@@ -114,7 +116,8 @@ def call_diamond_blastp_parallel(proj: Project, pool: ProcessPoolExecutor) -> No
 
 def run_diamond_pw(args):
     """..."""
-    logger.info(args.data)
+    set_log_level(args.log_level)
+    logger.info(args.input)
 
 
 def main():

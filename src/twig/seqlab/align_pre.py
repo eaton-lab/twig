@@ -415,6 +415,7 @@ def filter_sequences(
 
     # filter locus by min count
     if len(collapsed) < min_count:
+        logger.info(f"{len(seqs)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, isoform-prune={f['isoform']}, user={f['user']}])")
         logger.warning(f"locus has fewer than min_count sequences ({len(collapsed)}). No result written.")
         return
 
@@ -427,7 +428,7 @@ def filter_sequences(
     mean_length = np.mean([scores[i].bp_kept for i in collapsed])
     mean_trimmed = np.mean([scores[i].bp_trim for i in collapsed])
     mean_homology = np.mean([scores[i].homology_internal for i in collapsed])
-    logger.info(f"{len(seqs)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, user={f['user']}])")
+    logger.info(f"{len(seqs)} seqs -> {len(collapsed)} seqs, filtered by [min_homology={f['homology']}, min_length={f['min_length']}, isoform-prune={f['isoform']}, user={f['user']}])")
     logger.info(f"stats of retained sequences: mean_nt_length={mean_length:.2f}; mean_nt_trimmed={mean_trimmed:.2f}; mean_internal_homology={mean_homology:.2f}")
     # if filtered:
     #     logger.info(f"[{outpath.name}] locus did not pass 'min-count' filter ({len(passed)} < {min_count})")

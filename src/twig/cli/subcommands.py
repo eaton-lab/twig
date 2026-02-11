@@ -477,84 +477,6 @@ def get_parser_genome_table(parser: ArgumentParser | None = None) -> ArgumentPar
     return parser
 
 
-# def get_parser_isoform_prune(parser: ArgumentParser | None = None) -> ArgumentParser:
-#     KWARGS = dict(
-#         prog="isoform-prune",
-#         usage="isoform-prune -i CDS -o OUT [options]",
-#         help="group sequences by taxon-gene name and select a single isoform by length and/or score",
-#         formatter_class=lambda prog: RawDescriptionHelpFormatter(prog, width=120, max_help_position=120),
-#         description=dedent("""
-#             -------------------------------------------------------------------
-#             | isoform-prune: subselect one isoform from gene sequence groups
-#             -------------------------------------------------------------------
-#             | This command accepts one or more regular expressions to group
-#             | sequences by taxon-gene names and select a single representative
-#             | sequence. Its primary use is to prune isoforms. If multiple
-#             | isoforms are present for a group the kept sequence can be selected
-#             | by length and or 'score', where sequence scores can be input as a
-#             | TSV with [gene-name\tscore\tany...]. The info.tsv file from
-#             | `twig macse-trim` serves this purpose to provide homology scores
-#             | to select the isoform with greatest homology to other sequences.
-#             |
-#             | Tip: use --log-level DEBUG to inspect grouping/regex accuracy
-#             -------------------------------------------------------------------
-#         """),
-#         epilog=dedent("""
-#             Examples
-#             --------
-#             $ twig isoform-prune -i CDS -o OUT
-#             $ twig isoform-prune -i CDS -o OUT -s . 1
-#             $ twig isoform-prune -i CDS -o OUT -r '[...]'
-#             $ twig isoform-prune -i CDS -o OUT -R regex.tsv
-#             $ twig isoform-prune -i CDS -o OUT -S split.tsv -I info.tsv
-
-#             # run parallel jobs on many cds files
-#             $ parallel -j 10 "twig isoform-prune -i {} ..."  ::: CDS/*.fa
-
-#             # full pipeline
-#             $ twig macse-trim -i CDS -o TRIM     # {TRIM}
-#             $ twig isoform-prune -i CDS -s TRIM.info.tsv -o TRIM  # {TRIM}
-#             $ twig macse-align -i TRIM -o MSA    # {MSA}
-#             $ twig macse-refine -i MSA -o MSA    # {MSA}.nt.fa, {MSA}.aa.fa
-#         """)
-#     )
-
-#     # create parser or connect as subparser to cli parser
-#     if parser:
-#         KWARGS['name'] = KWARGS.pop("prog")
-#         parser = parser.add_parser(**KWARGS)
-#     else:
-#         KWARGS.pop("help")
-#         parser = ArgumentParser(**KWARGS)
-
-#     # path args
-#     parser.add_argument("-i", "--input", type=Path, metavar="path", required=True, help="input CDS fasta (aligned or unaligned)")
-#     parser.add_argument("-o", "--outpath", type=Path, metavar="path", required=True, help="path to write trimmed nucleotide fasta result")
-#     # parser.add_argument("-e", "--exclude", type=str, metavar="str", nargs="*", help="optional names or glob to exclude one or more sequences")
-
-#     # delim options for include/exclude/min-taxa by taxon name
-#     parser.add_argument("-d", "--delim", type=str, metavar="str", help="split gene names on str. Used to get taxon names for -R or -X")
-#     parser.add_argument("-di", "--delim-idxs", type=int, metavar="int", nargs="+", default=[0], help="index of delimited name items to keep")
-#     parser.add_argument("-dj", "--delim-join", type=str, metavar="str", default="-", help="join character on delimited name items")
-
-#     # enter twig macse-trim .info.tsv file
-#     parser.add_argument("-I", "--info-file", type=Path, metavar="path", help="use a tsv file from `twig macse-trim` to score isoforms")
-
-#     # regular expression acting on sequence or taxon+sequence names
-#     parser.add_argument("-r", "--regex", type=re.compile, metavar="str", default=None, help="use a regex pattern to group genes")
-#     parser.add_argument("-R", "--regex-file", type=Path, metavar="path", help=r"use a tsv to provide taxon\tregex for each taxon (use with -d)")
-
-#     # delimiter based grouping
-#     parser.add_argument("-s", "--split", metavar=("str", "int"), nargs=2, default=None, help="use {s} {i} to group names by str left of the {i}'th occurrence of {s}")
-#     parser.add_argument("-S", "--split-file", type=Path, metavar="path", help=r"use a tsv to provide -s args as taxon\t{s}\t{i} for each taxon")
-
-#     # parser.add_argument("-v", "--verbose", action="store_true", help="print macse progress info to stderr")
-#     parser.add_argument("-f", "--force", action="store_true", help="overwrite existing result files in outdir")
-#     # parser.add_argument("-k", "--keep", action="store_true", help="keep tmp files (for debugging)")
-#     parser.add_argument("-l", "--log-level", type=str, metavar="level", default="INFO", help="stderr logging level (DEBUG, [INFO], WARNING, ERROR)")
-#     return parser
-
-
 def get_parser_align_pre(parser: ArgumentParser | None = None) -> ArgumentParser:
     """Return a parser for relabel tool.
     """
@@ -636,7 +558,8 @@ def get_parser_align_cds(parser: ArgumentParser | None = None) -> ArgumentParser
             | align-cds: run MACSE codon-aware CDS alignment
             -------------------------------------------------------------------
             | Calls `macse -prog alignSequences` and writes aligned CDS to
-            | --outpath. Temporary AA output is removed after completion.
+            | --outpath. The resulting aligned CDS result should next be run in
+            | `twig align-post` to trim and filter the alignment.
             -------------------------------------------------------------------
         """),
         epilog=dedent("""

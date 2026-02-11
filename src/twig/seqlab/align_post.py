@@ -46,6 +46,43 @@ def parse_fasta_to_dict(path: str) -> Dict[str, str]:
     return {k: "".join(v) for k, v in seqs.items()}
 
 
+def write_fasta_from_dict(path: Path, seqs: Dict[str, str]) -> None:
+    """Write a FASTA dict to file."""
+    with open(path, "w") as hout:
+        for name, seq in seqs.items():
+            hout.write(f">{name}\n{seq}\n")
+
+
+def sanitize_trimal_header(name: str) -> str:
+    """Replace characters that trimal truncates in FASTA headers."""
+    # trimal truncates at ":" and "," and any whitespace.
+    return re.sub(r"[\s:,]", "_", name)
+
+
+def write_sanitized_fasta_for_trimal(src: Path, dst: Path) -> int:
+    """Write FASTA with headers sanitized for trimal parsing.
+
+    Returns
+    -------
+    int
+        Number of sequence headers changed by sanitization.
+    """
+    seqs = parse_fasta_to_dict(src)
+    out: Dict[str, str] = {}
+    seen = set()
+    changed = 0
+    for name, seq in seqs.items():
+        sname = sanitize_trimal_header(name)
+        if sname != name:
+            changed += 1
+        if sname in seen:
+            raise TwigError(f"header collision after trimal sanitization: {name} -> {sname}")
+        seen.add(sname)
+        out[sname] = seq
+    write_fasta_from_dict(dst, out)
+    return changed
+
+
 def get_alignment_stats(seqs: Dict[str, str], stage: str) -> Tuple[int, int]:
     """Return (nseqs, seqlen) for aligned fasta-like dict, else raise TwigError."""
     if not seqs:
@@ -175,13 +212,21 @@ def call_macse_export_pre(msa_nt: Path):
 
 def call_trimal(msa_aa: Path, iso_nt: Path, trimal_resoverlap: float, trimal_seqoverlap: float, trimal_algorithm: str):
     """..."""
-    # write a
+    # trimal can truncate headers at ':' / ',' / whitespace; sanitize first.
+    safe_aa = msa_aa.with_suffix(msa_aa.suffix + ".safe")
+    safe_nt = iso_nt.with_suffix(iso_nt.suffix + ".safe")
+    changed_aa = write_sanitized_fasta_for_trimal(msa_aa, safe_aa)
+    changed_nt = write_sanitized_fasta_for_trimal(iso_nt, safe_nt)
+    changed = max(changed_aa, changed_nt)
+    if changed:
+        logger.info(f"sanitized {changed} sequence headers for trimal (replaced ':', ',', and whitespace with '_')")
+
     out_nt = msa_aa.with_suffix(msa_aa.suffix + ".in_trimmed.backtranslated")
     cmd = [
         BIN_TRIMAL,
-        "-in", str(msa_aa),
+        "-in", str(safe_aa),
         "-out", str(out_nt),
-        "-backtrans", str(iso_nt),
+        "-backtrans", str(safe_nt),
         "-fasta",
         "-ignorestopcodon",
         "-resoverlap", str(trimal_resoverlap),
@@ -192,9 +237,9 @@ def call_trimal(msa_aa: Path, iso_nt: Path, trimal_resoverlap: float, trimal_seq
     logger.debug(" ".join(cmd))
     run_checked(cmd, "trimal backtranslation")
 
-    # compute the number of sites and sequences filtered
-    filtered = []
-    pre  = parse_fasta_to_dict(msa_aa)
+    # compute retained length and removed sequences using sanitized headers.
+    filtered: List[str] = []
+    pre = parse_fasta_to_dict(safe_aa)
     post = parse_fasta_to_dict(out_nt)
     for name in pre:
         if name not in post:
@@ -372,7 +417,7 @@ def run_align_post(args):
         msa_nt, f_user = filter_by_selection(args.input, args.out_prefix, args.exclude, args.subsample, args.subsample_tree)
         for sample in f_user:
             logger.info(f"{sample} filtered by user include/exclude args")
-        _ = get_alignment_stats(parse_fasta_to_dict(msa_nt), "selection filtering")
+        n_sel, s_sel = get_alignment_stats(parse_fasta_to_dict(msa_nt), "selection filtering")
 
         # TRIM TO MIN-GAP EDGES -> tmp.msa.nt.fa
         msa_nt = call_macse_trim_alignment(msa_nt, args.edge_window_size, args.edge_min_coverage)
@@ -380,6 +425,7 @@ def run_align_post(args):
         # POST TRIMMING/FILTERING OF THE AA ALIGNMENT IN TRIMAL
         if args.skip_trimal:
             f_trim = []
+            trim_len = s_sel
         else:
             # export as AA for trimming and run trimal to get NT result
             msa_aa, iso_nt = call_macse_export_pre(msa_nt)
@@ -391,7 +437,6 @@ def run_align_post(args):
 
         seqsx = parse_fasta_to_dict(msa_nt)
         nx, sx = get_alignment_stats(seqsx, "AA/trimal filtering")
-        logger.warning((nx, sx))
         if sx < args.min_retained_nt_length:
             raise TwigError("trimmed length < min_retained_nt_length")
 
@@ -401,6 +446,7 @@ def run_align_post(args):
             raise TwigError(f"N passed samples ({len(kept)}) < min_retained_seqs")
         for sample in f_terrace:
             logger.info(f"{sample[0]} filtered by min overlap")
+        n_terrace = len(kept)
 
         # [OPTIONAL] REFINE ALIGNMENT if any sequences were removed
         # if args.refine_alignment and  or (args.refine_alignment_if and filtered):
@@ -410,6 +456,18 @@ def run_align_post(args):
         out_nt, out_aa = call_macse_export_alignment_final(msa_nt, args.out_prefix)  # args.codon_int_fs, args.codon_ext_fs, args.codon_final_stop, args.codon_int_stop)
         seqs1 = parse_fasta_to_dict(out_nt)
         n1, s1 = get_alignment_stats(seqs1, "final export")
+        removed_user = max(0, n0 - n_sel)
+        removed_trimal = max(0, n_sel - nx)
+        removed_min_overlap = max(0, nx - n_terrace)
+        removed_total = max(0, n0 - n1)
+        if (not args.skip_trimal) and (len(f_trim) != removed_trimal):
+            logger.warning(
+                f"trimal removed-count mismatch (name-based={len(f_trim)} vs count-based={removed_trimal}); using count-based in summary"
+            )
+        logger.info(
+            "sequence removals by stage: "
+            f"user={removed_user}, trimal={removed_trimal}, min_overlap={removed_min_overlap}, total={removed_total}"
+        )
         logger.info(f"sequence alignment trimmed from ({n0}, {s0} nt) to ({n1}, {s1} nt)")
         logger.info(f"post-trimmed NT alignment written to {out_nt}")
         logger.info(f"post-trimmed AA alignment written to {out_aa}")
@@ -421,7 +479,9 @@ def run_align_post(args):
             ".post.edge_trimmed",
             ".post.edge_trimmed.info",
             ".post.edge_trimmed.null",
+            ".post.edge_trimmed.null.safe",
             ".post.edge_trimmed.translated",
+            ".post.edge_trimmed.translated.safe",
             ".post.edge_trimmed.translated.in_trimmed.backtranslated",
             ".post.edge_trimmed.terrace.trimmed",
             ".post.edge_trimmed.translated.in_trimmed.backtranslated.terrace.trimmed",

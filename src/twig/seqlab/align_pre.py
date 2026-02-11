@@ -169,7 +169,7 @@ def get_groups_from_split(split: list[str, int], split_file: Path, imap: dict[st
 
         # select only the sequences in this taxon_group
         subgroup = imap.get(taxon_group)
-        logger.warning((taxon_group, delim, idx, subgroup))
+        # logger.warning((taxon_group, delim, idx, subgroup))
 
         # skip if this locus does not contain this subgroup
         if not subgroup:

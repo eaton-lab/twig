@@ -2,7 +2,6 @@
 
 """Run DIAMOND BLASTP with optional filtering and annotation joins."""
 
-import csv
 import gzip
 import shutil
 import sys
@@ -11,6 +10,7 @@ from subprocess import run, PIPE
 from pathlib import Path
 from loguru import logger
 from ..utils.logger_setup import set_log_level
+from .diamond_bl_annotate import detect_annotation_format, load_annotations, expand_rows_with_annotations
 
 DEFAULT_EXTENDED_FIELDS = [
     "qseqid", "sseqid",
@@ -20,6 +20,15 @@ DEFAULT_EXTENDED_FIELDS = [
     "sstart", "send",
     "evalue", "bitscore",
     "corrected_bitscore", "qlen", "slen",
+]
+
+CONSENSUS_GO_FIELDS = [
+    "consensus_qseqid",
+    "go_id",
+    "support_n_queries",
+    "n_queries_total",
+    "support_frac_queries",
+    "passes_min_support",
 ]
 
 
@@ -140,27 +149,6 @@ def run_blastp(
     return proc.stdout
 
 
-def load_annotations(path: Path, key_col: str, wanted_cols: list[str] | None) -> tuple[dict[str, dict[str, str]], list[str]]:
-    """Load subject annotation TSV keyed by key_col."""
-    table: dict[str, dict[str, str]] = {}
-    with path.open() as handle:
-        reader = csv.DictReader(handle, delimiter="\t")
-        if reader.fieldnames is None or key_col not in reader.fieldnames:
-            raise ValueError(f"annotation file must contain a '{key_col}' column: {path}")
-        if wanted_cols:
-            for col in wanted_cols:
-                if col not in reader.fieldnames:
-                    raise ValueError(f"annotation column '{col}' not found in {path}")
-            cols = wanted_cols
-        else:
-            cols = [i for i in reader.fieldnames if i != key_col]
-        for row in reader:
-            key = row.get(key_col)
-            if key:
-                table[key] = {col: row.get(col, "") for col in cols}
-    return table, cols
-
-
 def filter_and_rank_rows(
     rows: list[dict[str, str]],
     min_qcov: float | None,
@@ -170,15 +158,20 @@ def filter_and_rank_rows(
 ) -> list[dict[str, str]]:
     """Apply optional coverage and per-query hit ranking filters."""
     if min_qcov is not None:
-        rows = [row for row in rows if parse_float(row["qcovhsp"], "qcovhsp") >= min_qcov]
+        # DIAMOND reports qcovhsp as percent; CLI threshold is a 0-1 fraction.
+        min_qcov_pct = min_qcov * 100.0
+        rows = [row for row in rows if parse_float(row["qcovhsp"], "qcovhsp") >= min_qcov_pct]
     if min_scov is not None:
-        rows = [row for row in rows if parse_float(row["scovhsp"], "scovhsp") >= min_scov]
+        # DIAMOND reports scovhsp as percent; CLI threshold is a 0-1 fraction.
+        min_scov_pct = min_scov * 100.0
+        rows = [row for row in rows if parse_float(row["scovhsp"], "scovhsp") >= min_scov_pct]
 
     if not best_hit_only and not top_hits:
         return rows
 
     grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
     for idx, row in enumerate(rows):
+        # Keep input order as a deterministic tie-breaker after sorting.
         row["_row_idx"] = str(idx)
         grouped[row["qseqid"]].append(row)
 
@@ -186,6 +179,7 @@ def filter_and_rank_rows(
     out: list[dict[str, str]] = []
     for qid in grouped:
         candidates = grouped[qid]
+        # Rank within each query by score, then evalue, then original row order.
         candidates.sort(
             key=lambda r: (
                 -parse_float(r["bitscore"], "bitscore"),
@@ -206,7 +200,6 @@ def write_output(
     outpath: Path | None,
     compress: bool,
     header: bool,
-    annots: dict[str, dict[str, str]] | None,
     annot_cols: list[str] | None,
 ) -> None:
     """Write TSV output to stdout or file, optionally gzip compressed."""
@@ -219,9 +212,8 @@ def write_output(
         lines.append("\t".join(columns))
     for row in rows:
         values = [row.get(col, "") for col in output_fields]
-        if annots and annot_cols:
-            match = annots.get(row.get("sseqid", ""), {})
-            values.extend(match.get(col, "") for col in annot_cols)
+        if annot_cols:
+            values.extend(row.get(col, "") for col in annot_cols)
         lines.append("\t".join(values))
     text = ("\n".join(lines) + "\n") if lines else ""
 
@@ -240,6 +232,50 @@ def write_output(
         outpath.write_text(text)
 
 
+def build_go_consensus_rows(
+    rows: list[dict[str, str]],
+    consensus_id: str,
+    n_queries_total: int,
+    min_support: float,
+    include_failed: bool,
+) -> list[dict[str, str]]:
+    """Aggregate GO-term support across distinct query IDs."""
+    votes: dict[str, set[str]] = defaultdict(set)
+    for row in rows:
+        go_id = row.get("go_id", "")
+        qseqid = row.get("qseqid", "")
+        if go_id and qseqid:
+            # Count support per distinct query ID to avoid over-weighting duplicated rows.
+            votes[go_id].add(qseqid)
+
+    out: list[dict[str, str]] = []
+    for go_id, qids in votes.items():
+        support_n = len(qids)
+        support_frac = (support_n / n_queries_total) if n_queries_total else 0.0
+        passes = support_frac >= min_support
+        if not include_failed and not passes:
+            continue
+        out.append(
+            {
+                "consensus_qseqid": consensus_id,
+                "go_id": go_id,
+                "support_n_queries": str(support_n),
+                "n_queries_total": str(n_queries_total),
+                "support_frac_queries": f"{support_frac:.6f}",
+                "passes_min_support": "true" if passes else "false",
+            }
+        )
+
+    out.sort(
+        key=lambda r: (
+            -int(r["support_n_queries"]),
+            -float(r["support_frac_queries"]),
+            r["go_id"],
+        )
+    )
+    return out
+
+
 def run_diamond_bl(args):
     """Runs diamond blast with args parsed from sys or CLI."""
     set_log_level(args.log_level)
@@ -249,12 +285,16 @@ def run_diamond_bl(args):
     if not args.target.exists():
         raise ValueError(f"target path not found: {args.target}")
 
-    if args.min_qcov is not None and not (0.0 <= args.min_qcov <= 100.0):
-        raise ValueError("--min-qcov must be between 0 and 100")
-    if args.min_scov is not None and not (0.0 <= args.min_scov <= 100.0):
-        raise ValueError("--min-scov must be between 0 and 100")
+    if args.min_qcov is not None and not (0.0 <= args.min_qcov <= 1.0):
+        raise ValueError("--min-qcov must be between 0 and 1")
+    if args.min_scov is not None and not (0.0 <= args.min_scov <= 1.0):
+        raise ValueError("--min-scov must be between 0 and 1")
     if args.top_hits is not None and args.top_hits < 1:
         raise ValueError("--top-hits must be >= 1")
+    if args.consensus_go_min_support is not None and not (0.0 <= args.consensus_go_min_support <= 1.0):
+        raise ValueError("--consensus-go-min-support must be between 0 and 1")
+    if args.consensus_go_out is not None and not args.consensus_go_id:
+        raise ValueError("--consensus-go-id is required when --consensus-go-out is set")
 
     diamond_bin = resolve_diamond_binary(args.binary)
     args.tmpdir.mkdir(parents=True, exist_ok=True)
@@ -270,6 +310,7 @@ def run_diamond_bl(args):
         output_fields = list(args.outfmt)
     internal_fields = list(output_fields)
 
+    # Ensure fields needed for ranking/filtering are always present internally.
     for needed in ("qseqid", "sseqid", "bitscore", "evalue"):
         if needed not in internal_fields:
             internal_fields.append(needed)
@@ -296,6 +337,8 @@ def run_diamond_bl(args):
         built_db = True
 
     rows: list[dict[str, str]] = []
+    ranked_rows: list[dict[str, str]] = []
+    consensus_log_msg: str | None = None
     try:
         blast_text = run_blastp(
             diamond_bin=diamond_bin,
@@ -317,14 +360,34 @@ def run_diamond_bl(args):
                     raise ValueError(f"unexpected DIAMOND output column count ({len(vals)}), expected {len(internal_fields)}")
                 rows.append(dict(zip(internal_fields, vals)))
 
+        # Coverage and per-query ranking happen before annotation expansion.
         rows = filter_and_rank_rows(rows, args.min_qcov, args.min_scov, args.best_hit_only, args.top_hits)
+        # Keep pre-annotation rows for consensus denominator and query counting.
+        ranked_rows = [dict(row) for row in rows]
 
         annotations = None
         annotation_cols = None
-        if args.subject_annotations is not None:
-            if not args.subject_annotations.exists():
-                raise ValueError(f"annotation TSV not found: {args.subject_annotations}")
-            annotations, annotation_cols = load_annotations(args.subject_annotations, args.annotation_key, args.annotation_cols)
+        annotation_match_mode = "exact"
+        if args.target_annotations is not None:
+            if not args.target_annotations.exists():
+                raise ValueError(f"annotation file not found: {args.target_annotations}")
+            annotation_format = detect_annotation_format(args.target_annotations, args.annotation_format)
+            if annotation_format in {"gaf", "gpa"}:
+                # DIAMOND sseqid may include isoform suffix (e.g., ".1"), while GO keys may be gene-level.
+                annotation_match_mode = "exact_then_gene_fallback"
+            annotations, annotation_cols = load_annotations(
+                path=args.target_annotations,
+                annotation_format=args.annotation_format,
+                key_col=args.annotation_key,
+                wanted_cols=args.annotation_cols,
+            )
+
+        rows = expand_rows_with_annotations(
+            rows,
+            annotations,
+            annotation_cols,
+            match_mode=annotation_match_mode,
+        )
 
         write_output(
             rows=rows,
@@ -332,9 +395,35 @@ def run_diamond_bl(args):
             outpath=args.out,
             compress=args.compress,
             header=args.header,
-            annots=annotations,
             annot_cols=annotation_cols,
         )
+
+        if args.consensus_go_out is not None:
+            if args.target_annotations is None:
+                raise ValueError("--consensus-go-out requires --target-annotations with GO annotations")
+            if not annotation_cols or "go_id" not in annotation_cols:
+                raise ValueError("--consensus-go-out requires GO annotations with 'go_id' available")
+
+            n_queries_total = len({row.get("qseqid", "") for row in ranked_rows if row.get("qseqid", "")})
+            consensus_rows = build_go_consensus_rows(
+                rows=rows,
+                consensus_id=args.consensus_go_id,
+                n_queries_total=n_queries_total,
+                min_support=args.consensus_go_min_support,
+                include_failed=args.consensus_go_include_failed,
+            )
+            # Consensus output is intentionally separate from the per-hit output TSV.
+            write_output(
+                rows=consensus_rows,
+                output_fields=CONSENSUS_GO_FIELDS,
+                outpath=args.consensus_go_out,
+                compress=args.consensus_go_out.suffix == ".gz",
+                header=True,
+                annot_cols=None,
+            )
+            consensus_log_msg = (
+                f"wrote {len(consensus_rows)} consensus GO rows for {n_queries_total} query IDs to {args.consensus_go_out}"
+            )
     finally:
         if built_db and dbfile.exists() and (not args.save_db):
             dbfile.unlink()
@@ -342,6 +431,8 @@ def run_diamond_bl(args):
     qids = {row.get("qseqid", "") for row in rows}
     sids = {row.get("sseqid", "") for row in rows}
     logger.info(f"wrote {len(rows)} hits ({len(qids)} query IDs, {len(sids)} subject IDs)")
+    if consensus_log_msg:
+        logger.info(consensus_log_msg)
     logger.complete()
 
 

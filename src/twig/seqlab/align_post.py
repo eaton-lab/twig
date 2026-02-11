@@ -53,34 +53,39 @@ def write_fasta_from_dict(path: Path, seqs: Dict[str, str]) -> None:
             hout.write(f">{name}\n{seq}\n")
 
 
-def sanitize_trimal_header(name: str) -> str:
-    """Replace characters that trimal truncates in FASTA headers."""
-    # trimal truncates at ":" and "," and any whitespace.
-    return re.sub(r"[\s:,]", "_", name)
+def build_trimal_id_maps(names: List[str]) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """Return {original->temp} and {temp->original} ID maps for trimal-safe headers."""
+    orig_to_tmp: Dict[str, str] = {}
+    tmp_to_orig: Dict[str, str] = {}
+    for idx, name in enumerate(names, start=1):
+        tid = f"TRIMAL_{idx:06d}"
+        orig_to_tmp[name] = tid
+        tmp_to_orig[tid] = name
+    return orig_to_tmp, tmp_to_orig
 
 
-def write_sanitized_fasta_for_trimal(src: Path, dst: Path) -> int:
-    """Write FASTA with headers sanitized for trimal parsing.
-
-    Returns
-    -------
-    int
-        Number of sequence headers changed by sanitization.
-    """
+def write_renamed_fasta(src: Path, dst: Path, name_map: Dict[str, str]) -> None:
+    """Write FASTA with headers replaced using name_map {old_name: new_name}."""
     seqs = parse_fasta_to_dict(src)
     out: Dict[str, str] = {}
-    seen = set()
-    changed = 0
     for name, seq in seqs.items():
-        sname = sanitize_trimal_header(name)
-        if sname != name:
-            changed += 1
-        if sname in seen:
-            raise TwigError(f"header collision after trimal sanitization: {name} -> {sname}")
-        seen.add(sname)
-        out[sname] = seq
+        if name not in name_map:
+            raise TwigError(f"missing header in remap table: {name}")
+        out[name_map[name]] = seq
     write_fasta_from_dict(dst, out)
-    return changed
+
+
+def restore_trimal_headers(seqs: Dict[str, str], tmp_to_orig: Dict[str, str]) -> Dict[str, str]:
+    """Return sequence dict with temporary trimal IDs replaced by original headers."""
+    restored: Dict[str, str] = {}
+    for tname, seq in seqs.items():
+        if tname not in tmp_to_orig:
+            raise TwigError(f"unexpected trimal ID not found in mapping table: {tname}")
+        oname = tmp_to_orig[tname]
+        if oname in restored:
+            raise TwigError(f"duplicate restored header after trimal remap: {oname}")
+        restored[oname] = seq
+    return restored
 
 
 def get_alignment_stats(seqs: Dict[str, str], stage: str) -> Tuple[int, int]:
@@ -212,14 +217,27 @@ def call_macse_export_pre(msa_nt: Path):
 
 def call_trimal(msa_aa: Path, iso_nt: Path, trimal_resoverlap: float, trimal_seqoverlap: float, trimal_algorithm: str):
     """..."""
-    # trimal can truncate headers at ':' / ',' / whitespace; sanitize first.
+    # trimal can truncate headers at ':' / ',' / whitespace; remap to temporary IDs first.
+    aa_seqs = parse_fasta_to_dict(msa_aa)
+    nt_seqs = parse_fasta_to_dict(iso_nt)
+    aa_names = list(aa_seqs.keys())
+    nt_names = list(nt_seqs.keys())
+    aa_set = set(aa_names)
+    nt_set = set(nt_names)
+    if aa_set != nt_set:
+        only_aa = sorted(aa_set - nt_set)
+        only_nt = sorted(nt_set - aa_set)
+        raise TwigError(
+            "AA/NT headers differ before trimal remap: "
+            f"AA-only={only_aa[:5]} NT-only={only_nt[:5]}"
+        )
+
+    orig_to_tmp, tmp_to_orig = build_trimal_id_maps(aa_names)
     safe_aa = msa_aa.with_suffix(msa_aa.suffix + ".safe")
     safe_nt = iso_nt.with_suffix(iso_nt.suffix + ".safe")
-    changed_aa = write_sanitized_fasta_for_trimal(msa_aa, safe_aa)
-    changed_nt = write_sanitized_fasta_for_trimal(iso_nt, safe_nt)
-    changed = max(changed_aa, changed_nt)
-    if changed:
-        logger.info(f"sanitized {changed} sequence headers for trimal (replaced ':', ',', and whitespace with '_')")
+    write_renamed_fasta(msa_aa, safe_aa, orig_to_tmp)
+    write_renamed_fasta(iso_nt, safe_nt, orig_to_tmp)
+    logger.info(f"remapped {len(orig_to_tmp)} sequence headers to temporary trimal-safe IDs")
 
     out_nt = msa_aa.with_suffix(msa_aa.suffix + ".in_trimmed.backtranslated")
     cmd = [
@@ -237,16 +255,18 @@ def call_trimal(msa_aa: Path, iso_nt: Path, trimal_resoverlap: float, trimal_seq
     logger.debug(" ".join(cmd))
     run_checked(cmd, "trimal backtranslation")
 
-    # compute retained length and removed sequences using sanitized headers.
-    filtered: List[str] = []
-    pre = parse_fasta_to_dict(safe_aa)
-    post = parse_fasta_to_dict(out_nt)
-    for name in pre:
-        if name not in post:
-            filtered.append(name)
-    if not post:
+    # restore original headers and report filtered names using original IDs.
+    post_tmp = parse_fasta_to_dict(out_nt)
+    if not post_tmp:
         raise TwigError("no sequences remain after trimal trimming")
-    trim_len = len(list(post.values())[0])
+    pre_tmp_ids = set(orig_to_tmp.values())
+    post_tmp_ids = set(post_tmp.keys())
+    filtered_tmp = [tid for tid in orig_to_tmp.values() if tid not in post_tmp_ids]
+    filtered = [tmp_to_orig[tid] for tid in filtered_tmp]
+
+    restored = restore_trimal_headers(post_tmp, tmp_to_orig)
+    write_fasta_from_dict(out_nt, restored)
+    trim_len = len(list(restored.values())[0])
     return out_nt, filtered, trim_len
 
 

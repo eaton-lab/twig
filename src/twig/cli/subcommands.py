@@ -107,7 +107,13 @@ def get_parser_diamond_bl(parser: ArgumentParser | None = None) -> ArgumentParse
             $ diamond-bl -q sample.fa -t arabidopsis.dmnd --target-is-db -o sample_vs_at.tsv
 
             # apply coverage filters and append annotations
-            $ diamond-bl -q sample.fa -t arabidopsis.dmnd --target-is-db --min-qcov 50 --min-scov 50 --subject-annotations at_go.tsv -o annotated_hits.tsv
+            $ diamond-bl -q sample.fa -t arabidopsis.dmnd --target-is-db --min-qcov 0.5 --min-scov 0.5 --target-annotations at_go.tsv -o annotated_hits.tsv
+
+            # transfer GO terms directly from a GAF/GPA file
+            $ diamond-bl -q sample.fa -t Araport11_pep.fa --best-hit-only --target-annotations tair.gaf.gz -o sample_go.tsv
+
+            # write a consensus GO vote table across all query sequences
+            $ diamond-bl -q group.fa -t Araport11_pep.fa --best-hit-only --target-annotations tair.gaf.gz --consensus-go-out group_go_consensus.tsv --consensus-go-id OG_9999 --consensus-go-min-support 0.5
         """)
     )
 
@@ -119,34 +125,49 @@ def get_parser_diamond_bl(parser: ArgumentParser | None = None) -> ArgumentParse
         KWARGS.pop("help")
         parser = ArgumentParser(**KWARGS)
 
-    # add arguments
-    parser.add_argument("-q", "--query", type=Path, metavar="path", required=True, help="query protein FASTA")
-    parser.add_argument("-t", "--target", type=Path, metavar="path", required=True, help="target protein FASTA or DIAMOND DB")
-    parser.add_argument("-o", "--out", type=Path, metavar="path", default=None, help="write TSV output to file (default: stdout)")
-    parser.add_argument("-e", "--evalue", type=float, metavar="float", default=1e-3, help="max e-value threshold [%(default)s]")
-    parser.add_argument("-b", "--bitscore", type=float, metavar="float", default=None, help="min bit-score threshold (overrides --evalue)")
-    parser.add_argument("-k", "--max-target-seqs", type=int, metavar="int", default=25, help="max subject hits reported per query [%(default)s]")
-    parser.add_argument("-j", "--threads", type=int, metavar="int", default=4, help="threads used by DIAMOND [%(default)s]")
-    parser.add_argument("-d", "--tmpdir", type=Path, metavar="path", default=TMPDIR, help=f"directory for temporary DB files [%(default)s]")
-    parser.add_argument("-f", "--force", action="store_true", help="overwrite an existing auto-built DB in tmpdir")
-    parser.add_argument("-s", "--save-db", action="store_true", help="keep an auto-built DB after search finishes")
-    parser.add_argument("-u", "--ultra-sensitive", action="store_true", help="enable DIAMOND ultra-sensitive mode")
-    parser.add_argument("-H", "--header", action="store_true", help="write a header row to output TSV")
-    parser.add_argument("-B", "--binary", type=Path, metavar="path", default=None, help="path to DIAMOND executable")
-    parser.add_argument("-c", "--compress", action="store_true", help="gzip-compress output (requires --out)")
-    parser.add_argument("--target-is-db", action="store_true", help="interpret --target as a prebuilt DIAMOND database")
-    parser.add_argument("--outfmt", type=str, metavar="field", nargs="*", default=None, help="output fields: omitted=extended defaults, empty=standard outfmt 6")
-    parser.add_argument("--min-qcov", type=float, metavar="float", default=None, help="minimum query coverage percent (0-100)")
-    parser.add_argument("--min-scov", type=float, metavar="float", default=None, help="minimum subject coverage percent (0-100)")
-    rank = parser.add_mutually_exclusive_group()
-    rank.add_argument("--best-hit-only", action="store_true", help="keep only the top-scoring hit per query")
-    rank.add_argument("--top-hits", type=int, metavar="int", default=None, help="keep up to N top-scoring hits per query")
-    parser.add_argument("--subject-annotations", type=Path, metavar="path", default=None, help="TSV table to append subject annotations")
-    parser.add_argument("--annotation-key", type=str, metavar="str", default="sseqid", help="join key column in annotation TSV [%(default)s]")
-    parser.add_argument("--annotation-cols", type=str, metavar="str", nargs="*", default=None, help="annotation columns to append (default: all non-key columns)")
-    parser.add_argument("--kwargs-makedb", type=str, nargs="*", default=None, help="additional raw args passed to diamond makedb")
-    parser.add_argument("--kwargs-blastp", type=str, nargs="*", default=None, help="additional raw args passed to diamond blastp")
-    parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "EXCEPTION"], metavar="level", default="INFO", help="stderr logging level (DEBUG, INFO, WARNING, ERROR; default=INFO)")
+    io = parser.add_argument_group("Input/Output")
+    io.add_argument("-q", "--query", type=Path, metavar="path", required=True, help="query protein FASTA")
+    io.add_argument("-t", "--target", type=Path, metavar="path", required=True, help="target protein FASTA or DIAMOND DB")
+    io.add_argument("-o", "--out", type=Path, metavar="path", default=None, help="write TSV output to file (default: stdout)")
+    io.add_argument("-H", "--header", action="store_true", help="write a header row to output TSV")
+    io.add_argument("-c", "--compress", action="store_true", help="gzip-compress output (requires --out)")
+
+    search = parser.add_argument_group("Search")
+    search.add_argument("-e", "--evalue", type=float, metavar="float", default=1e-3, help="max e-value threshold [%(default)s]")
+    search.add_argument("-b", "--bitscore", type=float, metavar="float", default=None, help="min bit-score threshold (overrides --evalue)")
+    search.add_argument("-k", "--max-target-seqs", type=int, metavar="int", default=25, help="max candidate target hits DIAMOND reports per query before post-BLAST ranking filters [%(default)s]")
+    search.add_argument("--target-is-db", action="store_true", help="treat --target as an existing DIAMOND database file")
+    search.add_argument("-u", "--ultra-sensitive", action="store_true", help="enable DIAMOND ultra-sensitive mode")
+    search.add_argument("--outfmt", type=str, metavar="field", nargs="*", default=None, help="DIAMOND outfmt fields: omit flag for extended defaults; pass empty list for standard outfmt 6")
+
+    filtering = parser.add_argument_group("Filtering and Ranking")
+    filtering.add_argument("--min-qcov", type=float, metavar="float", default=None, help="minimum query coverage fraction (0-1)")
+    filtering.add_argument("--min-scov", type=float, metavar="float", default=None, help="minimum subject coverage fraction (0-1)")
+    rank = filtering.add_mutually_exclusive_group()
+    rank.add_argument("--best-hit-only", action="store_true", help="post-BLAST filter: from hits retained after -k/coverage filters, keep only the top-scoring hit per query")
+    rank.add_argument("--top-hits", type=int, metavar="int", default=None, help="post-BLAST filter: from hits retained after -k/coverage filters, keep up to N top-scoring hits per query")
+
+    ann = parser.add_argument_group("Target Annotation Join")
+    ann.add_argument("--target-annotations", type=Path, metavar="path", default=None, help="annotation table to append by target ID (TSV, GAF(.gz), GPA(.gz)); GAF/GPA joins use exact ID then fallback from isoform suffix .<digits> to gene ID")
+    ann.add_argument("--annotation-format", choices=["auto", "tsv", "gaf", "gpa"], metavar="format", default="auto", help="annotation file format [%(default)s]")
+    ann.add_argument("--annotation-key", type=str, metavar="str", default="sseqid", help="join key column for TSV annotations only [%(default)s]")
+    ann.add_argument("--annotation-cols", type=str, metavar="str", nargs="*", default=None, help="annotation columns to append (TSV=any non-key cols; GPA=go_* cols; GAF=go_* plus db_object_id/db_object_symbol/db_object_name)")
+
+    consensus = parser.add_argument_group("Consensus GO Vote")
+    consensus.add_argument("--consensus-go-out", type=Path, metavar="path", default=None, help="optional TSV path to write consensus GO-term support across distinct query IDs")
+    consensus.add_argument("--consensus-go-id", type=str, metavar="str", default=None, help="identifier label for consensus GO rows (e.g., orthogroup ID); required with --consensus-go-out")
+    consensus.add_argument("--consensus-go-min-support", type=float, metavar="float", default=0.0, help="keep GO terms with support fraction >= this threshold [%(default)s]")
+    consensus.add_argument("--consensus-go-include-failed", action="store_true", help="include GO terms that fail --consensus-go-min-support in consensus output")
+
+    runtime = parser.add_argument_group("Runtime")
+    runtime.add_argument("-j", "--threads", type=int, metavar="int", default=4, help="threads used by DIAMOND [%(default)s]")
+    runtime.add_argument("-d", "--tmpdir", type=Path, metavar="path", default=TMPDIR, help=f"directory for temporary DB files [%(default)s]")
+    runtime.add_argument("-f", "--force", action="store_true", help="overwrite an existing auto-built DB in tmpdir")
+    runtime.add_argument("-s", "--save-db", action="store_true", help="keep an auto-built DB after search finishes")
+    runtime.add_argument("-B", "--binary", type=Path, metavar="path", default=None, help="path to DIAMOND executable")
+    runtime.add_argument("--kwargs-makedb", type=str, nargs="*", default=None, help="additional passthrough argument tokens for 'diamond makedb'")
+    runtime.add_argument("--kwargs-blastp", type=str, nargs="*", default=None, help="additional passthrough argument tokens for 'diamond blastp'")
+    runtime.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "EXCEPTION"], metavar="level", default="INFO", help="stderr logging level [DEBUG|INFO|WARNING|EXCEPTION] [%(default)s]")
     return parser
 
 

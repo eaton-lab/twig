@@ -98,6 +98,21 @@ def get_alignment_stats(seqs: Dict[str, str], stage: str) -> Tuple[int, int]:
     return len(seqs), lengths.pop()
 
 
+def get_stage_removed(prev_names: List[str], next_names: List[str], stage: str) -> List[str]:
+    """
+    Return names removed between adjacent pipeline stages, preserving prev_names order.
+
+    Enforces pipeline monotonicity: the next stage cannot introduce new sequence IDs.
+    """
+    prev_set = set(prev_names)
+    next_set = set(next_names)
+    added = next_set - prev_set
+    if added:
+        preview = sorted(added)[:5]
+        raise TwigError(f"{stage} introduced unexpected sequence IDs: {preview}")
+    return [name for name in prev_names if name not in next_set]
+
+
 def run_checked(cmd: List[str], step: str):
     """Run subprocess command and raise TwigError with stderr/stdout on failure."""
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -237,7 +252,7 @@ def call_trimal(msa_aa: Path, iso_nt: Path, trimal_resoverlap: float, trimal_seq
     safe_nt = iso_nt.with_suffix(iso_nt.suffix + ".safe")
     write_renamed_fasta(msa_aa, safe_aa, orig_to_tmp)
     write_renamed_fasta(iso_nt, safe_nt, orig_to_tmp)
-    logger.info(f"remapped {len(orig_to_tmp)} sequence headers to temporary trimal-safe IDs")
+    logger.debug(f"remapped {len(orig_to_tmp)} sequence headers to temporary trimal-safe IDs")
 
     out_nt = msa_aa.with_suffix(msa_aa.suffix + ".in_trimmed.backtranslated")
     cmd = [
@@ -437,26 +452,42 @@ def run_align_post(args):
         msa_nt, f_user = filter_by_selection(args.input, args.out_prefix, args.exclude, args.subsample, args.subsample_tree)
         for sample in f_user:
             logger.info(f"{sample} filtered by user include/exclude args")
-        n_sel, s_sel = get_alignment_stats(parse_fasta_to_dict(msa_nt), "selection filtering")
+        seqs_sel = parse_fasta_to_dict(msa_nt)
+        n_sel, s_sel = get_alignment_stats(seqs_sel, "selection filtering")
+        names0 = list(seqs0)
+        names_sel = list(seqs_sel)
+        f_user = get_stage_removed(names0, names_sel, "selection filtering")
 
         # TRIM TO MIN-GAP EDGES -> tmp.msa.nt.fa
         msa_nt = call_macse_trim_alignment(msa_nt, args.edge_window_size, args.edge_min_coverage)
+        seqs_edge = parse_fasta_to_dict(msa_nt)
+        n_edge, _ = get_alignment_stats(seqs_edge, "edge trimming")
+        names_edge = list(seqs_edge)
+        f_edge = get_stage_removed(names_sel, names_edge, "edge trimming")
+        for sample in f_edge:
+            logger.info(f"{sample} filtered by edge trimming")
 
         # POST TRIMMING/FILTERING OF THE AA ALIGNMENT IN TRIMAL
         if args.skip_trimal:
             f_trim = []
             trim_len = s_sel
+            seqsx = seqs_edge
+            nx, sx = n_edge, len(next(iter(seqs_edge.values())))
         else:
             # export as AA for trimming and run trimal to get NT result
             msa_aa, iso_nt = call_macse_export_pre(msa_nt)
-            msa_nt, f_trim, trim_len = call_trimal(msa_aa, iso_nt, args.trimal_res_overlap, args.trimal_seq_overlap, args.trimal_algorithm)
+            msa_nt, _, trim_len = call_trimal(msa_aa, iso_nt, args.trimal_res_overlap, args.trimal_seq_overlap, args.trimal_algorithm)
+            seqsx = parse_fasta_to_dict(msa_nt)
+            nx, sx = get_alignment_stats(seqsx, "AA/trimal filtering")
+            names_trim = list(seqsx)
+            f_trim = get_stage_removed(names_edge, names_trim, "trimal filtering")
             for sample in f_trim:
                 logger.info(f"{sample} filtered by trimal seqoverlap")
             if trim_len < args.min_retained_nt_length:
                 raise TwigError("trimmed length < min_retained_nt_length")
+        if args.skip_trimal:
+            names_trim = names_edge
 
-        seqsx = parse_fasta_to_dict(msa_nt)
-        nx, sx = get_alignment_stats(seqsx, "AA/trimal filtering")
         if sx < args.min_retained_nt_length:
             raise TwigError("trimmed length < min_retained_nt_length")
 
@@ -467,6 +498,8 @@ def run_align_post(args):
         for sample in f_terrace:
             logger.info(f"{sample[0]} filtered by min overlap")
         n_terrace = len(kept)
+        names_terrace = kept
+        f_terrace_names = [sample[0] for sample in f_terrace]
 
         # [OPTIONAL] REFINE ALIGNMENT if any sequences were removed
         # if args.refine_alignment and  or (args.refine_alignment_if and filtered):
@@ -476,17 +509,17 @@ def run_align_post(args):
         out_nt, out_aa = call_macse_export_alignment_final(msa_nt, args.out_prefix)  # args.codon_int_fs, args.codon_ext_fs, args.codon_final_stop, args.codon_int_stop)
         seqs1 = parse_fasta_to_dict(out_nt)
         n1, s1 = get_alignment_stats(seqs1, "final export")
-        removed_user = max(0, n0 - n_sel)
-        removed_trimal = max(0, n_sel - nx)
-        removed_min_overlap = max(0, nx - n_terrace)
-        removed_total = max(0, n0 - n1)
-        if (not args.skip_trimal) and (len(f_trim) != removed_trimal):
-            logger.warning(
-                f"trimal removed-count mismatch (name-based={len(f_trim)} vs count-based={removed_trimal}); using count-based in summary"
-            )
+        names1 = list(seqs1)
+        _ = get_stage_removed(names_terrace, names1, "final export")
+
+        removed_user = len(f_user)
+        removed_edge_trim = len(f_edge)
+        removed_trimal = len(f_trim)
+        removed_min_overlap = len(f_terrace_names)
+        removed_total = len(get_stage_removed(names0, names1, "full pipeline"))
         logger.info(
             "sequence removals by stage: "
-            f"user={removed_user}, trimal={removed_trimal}, min_overlap={removed_min_overlap}, total={removed_total}"
+            f"user={removed_user}, edge_trim={removed_edge_trim}, trimal={removed_trimal}, min_overlap={removed_min_overlap}, total={removed_total}"
         )
         logger.info(f"sequence alignment trimmed from ({n0}, {s0} nt) to ({n1}, {s1} nt)")
         logger.info(f"post-trimmed NT alignment written to {out_nt}")

@@ -24,10 +24,49 @@ the -e parameter to specify the env name, or using the name 'csubst',
 as in the installation command below. Note, to call csubst from twig,
 do not activate the csubst env, just specify the name with -e.
 
-$ conda create -n csubst csubst 'iqtree<3' Python=3.10 --strict-channel -c conda-forge -c bioconda
+$ conda create -n csubst csubst 'iqtree<3' 'setuptools<70' Python=3.10 --strict-channel -c conda-forge -c bioconda
 $ twig csubst -a MSA -t NWK -g FG -o OUT/PRE -e csubst
 
 """
+
+
+def call_csubst(args):
+    """..."""
+    """Run Alignment step with default settings"""
+    cmd = [
+        BIN_CSUBST, "analyze",
+        "--alignment_file", str(args.alignment),
+        "--rooted_tree_file", str(args.tree),
+        "--foreground", str(args.foreground),
+        "--fg_format", "2" if args.foreground_table else "1",
+        "--fg_exclude_wg", "yes" if args.fg_exclude_wg else "no",
+        "--fg_stem_only", "yes" if args.fg_stem_only else "no",
+        "--threads", str(args.threads),
+        "--max_arity", str(args.max_arity),
+        "--exhaustive_until", str(args.exhaustive_until),
+        "--iqtree_exe", str(BIN_IQTREE),
+        "--iqtree_redo", "yes"  # do not accidentally reuse! [todo: make an option]
+    ]
+    logger.info(f"CMD: {' '.join(cmd)}")
+    if args.verbose:
+        proc = subprocess.run(cmd, stderr=sys.stderr, check=True, cwd=args.workdir)
+    else:
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=args.workdir)
+
+    # write to logfile
+    logfile = args.workdir / 'csubst_log.txt'
+    logger.info(f"csubst log written to {logfile}")
+    with open(logfile, 'w') as out:
+        out.write(proc.stdout)
+        out.write("\n-------\n")
+        out.write(proc.stderr)
+
+    # raise on error
+    if proc.returncode:
+        raise Exception(proc.stderr)
+        # raise subprocess.CalledProcessError(cmd, proc.stderr)
+    # (outdir / f"{prefix}.tmp.msa.aa.fa").unlink()
+    # return proc.returncode
 
 
 def run_csubst(args):
@@ -71,6 +110,9 @@ def run_csubst(args):
         if not argpath.exists():
             raise TwigError(f"path '{argpath}' does not exist")
 
+    # optionally force the gene tree sample names to match the species tree topology
+    # ...
+
     # copy the alignment file into the results dir and use that one.
     # copy the tree file and strip internal labels
     dst = args.workdir / "csubst_input_alignment.fa"
@@ -84,46 +126,6 @@ def run_csubst(args):
     # run it
     call_csubst(args)
     logger.info(f"csubst result written to {args.workdir}/")
-
-
-def call_csubst(args):
-    """..."""
-    """Run Alignment step with default settings"""
-    cmd = [
-        BIN_CSUBST, "analyze",
-        "--alignment_file", str(args.alignment),
-        "--rooted_tree_file", str(args.tree),
-        "--foreground", str(args.foreground),
-        "--fg_format", "2" if args.foreground_table else "1",
-        "--fg_exclude_wg", "yes" if args.fg_exclude_wg else "no",
-        "--fg_stem_only", "yes" if args.fg_stem_only else "no",
-        "--threads", str(args.threads),
-        "--max_arity", str(args.max_arity),
-        "--exhaustive_until", str(args.exhaustive_until),
-        "--iqtree_exe", str(BIN_IQTREE),
-        "--iqtree_redo", "yes"  # do not accidentally reuse! [todo: make an option]
-    ]
-    logger.info(f"CMD: {' '.join(cmd)}")
-    if args.verbose:
-        proc = subprocess.run(cmd, stderr=sys.stderr, check=True, cwd=args.workdir)
-    else:
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=args.workdir)
-
-    # write to logfile
-    logfile = args.workdir / 'csubst_log.txt'
-    logger.info(f"csubst log written to {logfile}")
-    with open(logfile, 'w') as out:
-        out.write(proc.stdout)
-        out.write("\n-------\n")
-        out.write(proc.stderr)
-
-    # raise on error
-    if proc.returncode:
-        raise Exception(proc.stderr)
-        # raise subprocess.CalledProcessError(cmd, proc.stderr)
-    # (outdir / f"{prefix}.tmp.msa.aa.fa").unlink()
-    # return proc.returncode
-
 
 def main():
     from ..cli.subcommands import get_parser_csubst

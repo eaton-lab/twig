@@ -747,7 +747,7 @@ def get_parser_align_post(parser: ArgumentParser | None = None) -> ArgumentParse
     trimal.add_argument("-tx", "--skip-trimal", action="store_true", help="skip trimal column/sequence filtering")
 
     retain = parser.add_argument_group("Overlap and Retention")
-    retain.add_argument("-mo", "--min-pair-overlap", type=int, metavar="int", default=10, help="minimum shared non-missing sites required for every pair [%(default)s]")
+    retain.add_argument("-mo", "--min-pair-overlap", type=int, metavar="int", default=10, help="minimum non-missing site overlap required for every pair [%(default)s]")
     retain.add_argument("-ms", "--min-retained-seqs", type=int, metavar="int", default=4, help="require at least this many sequences after filtering [%(default)s]")
     retain.add_argument("-ml", "--min-retained-nt-length", type=int, metavar="int", default=25, help="require final alignment length >= this nt length [%(default)s]")
     # parser.add_argument("-if", "--codon-int-fs", type=str, metavar="str", default="NNN", help="codon to sub for internal frame shift [NNN]")

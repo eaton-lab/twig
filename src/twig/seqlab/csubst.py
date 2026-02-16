@@ -41,6 +41,7 @@ def call_csubst(args):
         "--fg_format", "2" if args.foreground_table else "1",
         "--fg_exclude_wg", "yes" if args.fg_exclude_wg else "no",
         "--fg_stem_only", "yes" if args.fg_stem_only else "no",
+        "--cutoff_stat", str(args.cutoff_stat),
         "--threads", str(args.threads),
         "--max_arity", str(args.max_arity),
         "--exhaustive_until", str(args.exhaustive_until),

@@ -71,6 +71,11 @@ def get_parser_csubst(parser: ArgumentParser | None = None) -> ArgumentParser:
     parser.add_argument("-w", "--fg-exclude-wg", action="store_true", help="sets 'yes' to exclude within-group comparisons")
     parser.add_argument("-s", "--fg-stem-only", action="store_true", help="sets 'yes' to only stem comparisons")
 
+    # other outputs
+    parser.add_argument("--write-cbs", action="store_true", help="sets 'yes' to generate combinatorial-branch-site output")
+    parser.add_argument("--write-cs", action="store_true", help="sets 'yes' to generate combinatorial-site output")
+    parser.add_argument("--write-s", action="store_true", help="sets 'yes' to generate site output")
+
     # others
     parser.add_argument("-e", "--env", type=Path, metavar="path", default="csubst", help="conda env name where 'csubst' in installed [csubst]")
     parser.add_argument("-j", "--threads", type=int, metavar="int", default=1, help="number of threads")

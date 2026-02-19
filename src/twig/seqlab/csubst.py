@@ -47,6 +47,9 @@ def call_csubst(args):
         "--exhaustive_until", str(args.exhaustive_until),
         "--iqtree_exe", str(BIN_IQTREE),
         "--iqtree_redo", "yes"  # do not accidentally reuse! [todo: make an option]
+        "--cbs", "yes" if args.write_cbs else "no",
+        "--cs", "yes" if args.write_cs else "no",
+        "--s", "yes" if args.write_s else "no",
     ]
     logger.info(f"CMD: {' '.join(cmd)}")
     if args.verbose:

@@ -46,7 +46,7 @@ def call_csubst(args):
         "--max_arity", str(args.max_arity),
         "--exhaustive_until", str(args.exhaustive_until),
         "--iqtree_exe", str(BIN_IQTREE),
-        "--iqtree_redo", "yes"  # do not accidentally reuse! [todo: make an option]
+        "--iqtree_redo", "yes",  # do not accidentally reuse! [todo: make an option]
         "--cbs", "yes" if args.write_cbs else "no",
         "--cs", "yes" if args.write_cs else "no",
         "--s", "yes" if args.write_s else "no",

@@ -593,6 +593,8 @@ def get_parser_align_cds(parser: ArgumentParser | None = None) -> ArgumentParser
             --------
             $ twig align-cds -i CDS -o OUT.msa.nt.fa
             $ twig align-cds -i CDS -o OUT.msa.nt.fa -m 100
+            $ twig align-cds -i CDS -o OUT.msa.nt.fa --seq-lr '^pseudo_' '^partial_'
+            $ twig align-cds -i CDS -o OUT.msa.nt.fa --seq-lr seq_lr_patterns.txt
             $ twig align-cds -i CDS -o OUT.msa.nt.fa -v
         """)
     )
@@ -610,6 +612,18 @@ def get_parser_align_cds(parser: ArgumentParser | None = None) -> ArgumentParser
 
     align = parser.add_argument_group("Alignment")
     align.add_argument("-m", "--max-refine-iter", type=int, metavar="int", default=-1, help="maximum MACSE refinement iterations (-1 uses MACSE default) [%(default)s]")
+    align.add_argument(
+        "-s",
+        "--seq-lr",
+        type=str,
+        metavar="str",
+        nargs="+",
+        help=(
+            "designate set of 'less-reliable' seqs by name/regex or in file path"
+            # .selectors passed to MACSE -seq_lr; "
+            # "provide regex patterns directly or one selector-file path"
+        ),
+    )
 
     runtime = parser.add_argument_group("Runtime")
     runtime.add_argument("-v", "--verbose", action="store_true", help="print MACSE progress to stderr")

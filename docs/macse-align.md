@@ -1,48 +1,42 @@
+# align-cds
 
-# macse-align
+## The `align-cds` subcommand
 
-...
-
-## The macse-align subcommand
+`twig align-cds` wraps `macse -prog alignSequences` to write an intermediate
+codon-aware CDS alignment. The output from this step should usually be passed to
+`twig align-post` for trimming and filtering.
 
 ```bash
--------------------------------------------------------------------
-| macse-align: run macse joint cds/aa alignment
--------------------------------------------------------------------
-| Calls `macse -prog AlignSequences` and writes cds alignment
-| to {outpath}. This is an intermediate file. You should next
-| run `twig macse-refine` to trim/filter/convert to write final
-| cds and aa alignments.
--------------------------------------------------------------------
-
-options:
-  -h, --help                     show this help message and exit
-  -i path, --input path          input CDS (aligned or unaligned)
-  -o path, --outpath path        path to write aligned nt fasta
-  -m int, --max-refine-iter int  max refinement iterations during optimizing [default -1 = no limit]
-  -v, --verbose                  print macse progress info to stderr
-  -f, --force                    overwrite existing result files in outdir
-  -l level, --log-level level    stderr logging level (DEBUG, [INFO], WARNING, ERROR)
+twig align-cds -i CDS.nt.fa -o OUT.msa.nt.fa
+twig align-cds -i CDS.nt.fa -o OUT.msa.nt.fa -m 100
+twig align-cds -i CDS.nt.fa -o OUT.msa.nt.fa --seq-lr '^pseudo_' '^partial_'
+twig align-cds -i CDS.nt.fa -o OUT.msa.nt.fa --seq-lr seq_lr_patterns.txt
 ```
 
-### Running twig macse-align
-```
-Examples
---------
-$ twig macse-align -i CDS -o /OUT/CDS.msa
-```
+## Less-reliable sequences with `--seq-lr`
 
-### Parallelization...
-```bash
-# run parallel jobs on many cds files
-$ parallel -j 10 "twig macse-align -i {} ..." ::: CDS/*.nt.fa
-```
+Use `--seq-lr` when some input records should be aligned as MACSE
+less-reliable sequences via `-seq_lr`.
 
-### full pipeline
-```bash
-# full pipeline
-$ twig macse-prep -i CDS -o TRIM     # {TRIM}
-$ twig macse-align -i TRIM -o MSA    # {MSA}
-$ twig macse-refine -i MSA -o MSA    # {MSA}.nt.fa, {MSA}.aa.fa
-```
+- Inline mode: pass one or more regex selectors directly.
+- File mode: pass one existing file path; each nonblank, non-comment line is
+  treated as one selector.
+- Matching uses Python regular expressions with `re.search()` against each FASTA
+  header.
 
+When `--seq-lr` matches one or more records, `twig` writes temporary FASTAs for
+reliable and less-reliable sequences and passes both to MACSE. If nothing
+matches, `twig` warns and falls back to a normal `align-cds` run without
+`-seq_lr`.
+
+## Options
+
+```text
+-i, --input path             input CDS fasta (aligned or unaligned)
+-o, --outpath path           output path for aligned nucleotide fasta
+-m, --max-refine-iter int    maximum MACSE refinement iterations (-1 uses MACSE default)
+--seq-lr str [str ...]       regex selectors or one selector-file path for less-reliable sequences
+-v, --verbose                print MACSE progress to stderr
+-f, --force                  overwrite existing output files
+-l, --log-level level        stderr logging level (DEBUG, [INFO], WARNING, ERROR)
+```
